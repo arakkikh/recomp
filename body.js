@@ -9,11 +9,13 @@ const Body = (() => {
   const FIELDS = [
     { k: 'weight', label: '体重', unit: 'kg', dec: 2, good: 0 },
     { k: 'fatPct', label: '体脂肪率', unit: '%', dec: 1, good: -1 },
-    { k: 'bmi', label: 'BMI', unit: '', dec: 1, good: 0 },
     { k: 'muscleKg', label: '筋肉量', unit: 'kg', dec: 1, good: 1 },
     { k: 'muscleScore', label: '筋肉スコア', unit: '', dec: 0, good: 1, select: [-4, -3, -2, -1, 0, 1, 2, 3, 4] },
+    { k: 'bmi', label: 'BMI', unit: '', dec: 1, good: 0 },
+    { k: 'muscleQuality', label: '筋質点数', unit: '点', dec: 0, good: 1 },
     { k: 'visceral', label: '内臓脂肪レベル', unit: '', dec: 1, good: -1 },
     { k: 'boneKg', label: '推定骨量', unit: 'kg', dec: 1, good: 1 },
+    { k: 'waterPct', label: '体水分率', unit: '%', dec: 1, good: 0 },
     { k: 'bmr', label: '基礎代謝', unit: 'kcal', dec: 0, good: 1 },
     { k: 'bodyAge', label: '体内年齢', unit: '才', dec: 0, good: -1 },
   ];
@@ -53,7 +55,9 @@ const Body = (() => {
     if (es.length) drawChart();
   }
 
-  const ctaHtml = () => '<div class="bottom-cta"><button class="btn primary big" data-act="add">＋ 測定結果を記録</button></div>';
+  const ctaHtml = () => `<div class="bottom-cta"><div class="cta-pair">
+    <button class="btn primary big" data-act="scan">📷 写真から読み取り</button>
+    <button class="btn big" data-act="add">＋ 手入力</button></div></div>`;
 
   function emptyHtml() {
     return `<div class="card">
@@ -162,47 +166,73 @@ const Body = (() => {
     if (!b) return;
     switch (b.dataset.act) {
       case 'add': openForm(UI.dateStr()); break;
+      case 'scan': BodyImport.open(); break;
       case 'edit': openForm(b.dataset.date); break;
       case 'metric': metric = b.dataset.k; render(root); break;
       case 'range': range = b.dataset.r; render(root); break;
     }
   }
 
-  // ---- 入力シート ----
-  function openForm(date) {
+  // ---- 入力シート（手入力／写真読み取り後の確認画面を兼ねる）----
+  // opts: { prefill:{k:v}, time, missing:[k], uncertain:[k], raw, source:'photo'|'paste', onBack }
+  function openForm(date, opts = {}) {
+    const imp = !!opts.prefill;
     const find = (d) => Store.data.body.find((x) => x.date === d);
     const last = entries().slice(-1)[0] || {};
+    const missing = new Set(opts.missing || []);
+    const uncertain = new Set(opts.uncertain || []);
+    const badge = (k) => (imp && missing.has(k) ? '<em class="flag miss">読み取れず</em>' : imp && uncertain.has(k) ? '<em class="flag unsure">要確認</em>' : '');
+    const cls = (k) => (imp && missing.has(k) ? 'bf missing' : imp && uncertain.has(k) ? 'bf uncertain' : 'bf');
     const fieldHtml = (f) => {
       if (f.select) {
-        return `<label class="bf"><span>${f.label}</span>
+        return `<label class="${cls(f.k)}"><span>${f.label}${badge(f.k)}</span>
           <select data-k="${f.k}"><option value="">—</option>${f.select.map((v) => `<option value="${v}">${v > 0 ? '+' + v : v}</option>`).join('')}</select></label>`;
       }
-      return `<label class="bf"><span>${f.label}${f.unit ? ` <small>${f.unit}</small>` : ''}</span>
-        <input data-k="${f.k}" type="text" inputmode="decimal" autocomplete="off" placeholder="${last[f.k] != null ? fmt(f.k, last[f.k]) : ''}"></label>`;
+      return `<label class="${cls(f.k)}"><span>${f.label}${f.unit ? ` <small>${f.unit}</small>` : ''}${badge(f.k)}</span>
+        <input data-k="${f.k}" type="text" inputmode="${f.k === 'muscleScore' ? 'text' : 'decimal'}" autocomplete="off" placeholder="${!imp && last[f.k] != null ? fmt(f.k, last[f.k]) : ''}"></label>`;
     };
+    const head = imp
+      ? `<div class="sheet-head"><button class="back-btn" data-b="back">‹ 戻る</button><h3>読み取り結果の確認</h3></div>
+         <p class="hint">${opts.source === 'paste' ? '貼り付けた文字' : '写真'}から読み取った値です。<b>必ず元の画面と見比べて</b>、違う値は直してから保存してください。${missing.size ? `<br><span class="flag miss">読み取れず</span> の項目は空欄です。` : ''}${uncertain.size ? ` <span class="flag unsure">要確認</span> は自信が低い値です。` : ''}</p>`
+      : '<h3>測定結果を記録</h3>';
     const html = `
-      <h3>測定結果を記録</h3>
-      <label class="bf bf-date"><span>測定日</span><input type="date" id="b-date" value="${date}" max="${UI.dateStr()}"></label>
+      ${head}
+      <div class="time-row">
+        <label class="bf bf-date ${imp && !opts.dateFound ? 'missing' : ''}"><span>測定日${imp && !opts.dateFound ? '<em class="flag miss">読み取れず</em>' : ''}</span><input type="date" id="b-date" value="${date}" max="${UI.dateStr()}"></label>
+        <label class="bf bf-date"><span>時刻</span><input type="time" id="b-time" value="${opts.time || ''}"></label>
+      </div>
       <p class="hint" id="b-mode"></p>
       <div class="bform">${FIELDS.map(fieldHtml).join('')}</div>
-      <p class="hint">薄い文字は前回の値です。空欄の項目は記録しません。</p>
+      <p class="hint">${imp ? '空欄の項目は記録しません。' : '薄い文字は前回の値です。空欄の項目は記録しません。'}</p>
+      ${imp && opts.raw ? `<details class="raw"><summary class="muted small">読み取った文字を見る</summary><pre>${esc(opts.raw)}</pre></details>` : ''}
       <button class="btn primary big" data-b="save">保存</button>
       <div class="row gap mt"><button class="btn ghost danger" data-b="delete" id="b-del" hidden>この日の記録を削除</button></div>`;
 
     UI.sheet(html, (sh) => {
       const dateIn = sh.querySelector('#b-date');
-      const fill = () => {
+      const timeIn = sh.querySelector('#b-time');
+      const setVals = (src) => FIELDS.forEach((f) => { sh.querySelector(`[data-k="${f.k}"]`).value = src && src[f.k] != null ? String(src[f.k]) : ''; });
+      const refresh = (first) => {
         const ex = find(dateIn.value);
-        FIELDS.forEach((f) => { sh.querySelector(`[data-k="${f.k}"]`).value = ex && ex[f.k] != null ? String(ex[f.k]) : ''; });
-        sh.querySelector('#b-mode').textContent = ex ? 'この日の記録があります。修正して保存すると上書きされます。' : '';
-        sh.querySelector('#b-del').hidden = !ex;
+        if (imp) {
+          if (first) setVals(opts.prefill);
+          sh.querySelector('#b-mode').textContent = ex ? `⚠️ ${UI.fmtDate(dateIn.value)} の記録がすでにあります。保存するときに上書きするか確認します。` : '';
+        } else {
+          setVals(ex);
+          if (ex) timeIn.value = ex.time || '';
+          sh.querySelector('#b-mode').textContent = ex ? 'この日の記録があります。修正して保存すると上書きされます。' : '';
+          sh.querySelector('#b-del').hidden = !ex;
+        }
       };
-      fill();
-      dateIn.addEventListener('change', fill);
+      refresh(true);
+      dateIn.addEventListener('change', () => refresh(false));
+      // 直した項目は目立たせるのをやめる
+      sh.addEventListener('input', (e) => { const l = e.target.closest('.bf'); if (l && e.target.value) l.classList.remove('missing', 'uncertain'); });
 
       sh.addEventListener('click', (e) => {
         const b = e.target.closest('[data-b]');
         if (!b) return;
+        if (b.dataset.b === 'back') { if (opts.onBack) opts.onBack(); else UI.closeSheet(); return; }
         const d = dateIn.value;
         if (!d) { UI.toast('測定日を入れてください'); return; }
         if (b.dataset.b === 'delete') {
@@ -211,21 +241,29 @@ const Body = (() => {
           Store.save(); UI.closeSheet(); render(root); UI.toast('削除しました');
           return;
         }
-        const entry = { date: d };
+        let entry = { date: d };
+        if (timeIn.value) entry.time = timeIn.value;
         const bad = [];
         FIELDS.forEach((f) => {
-          const raw = sh.querySelector(`[data-k="${f.k}"]`).value.trim().replace(',', '.').replace('−', '-');
+          const raw = sh.querySelector(`[data-k="${f.k}"]`).value.trim().replace(',', '.').replace(/[−ー–]/, '-');
           if (raw === '') return;
           const v = parseFloat(raw);
-          if (!Number.isFinite(v) || (!f.select && v < 0)) bad.push(f.label); else entry[f.k] = v;
+          if (!Number.isFinite(v) || (f.k !== 'muscleScore' && v < 0)) bad.push(f.label); else entry[f.k] = v;
         });
         if (bad.length) { UI.toast(`数字を確認してください：${bad.join('、')}`); return; }
-        if (Object.keys(entry).length === 1) { UI.toast('1つ以上の項目を入力してください'); return; }
+        if (Object.keys(entry).filter((k) => k !== 'date' && k !== 'time').length === 0) { UI.toast('1つ以上の項目を入力してください'); return; }
+        const ex = find(d);
+        if (imp && ex) {
+          if (!confirm(`${UI.fmtDate(d)} の記録がすでにあります。\n読み取った値で上書きしますか？\n（空欄の項目は前の記録の値を残します）`)) return;
+          entry = { ...ex, ...entry };
+        }
         Store.data.body = Store.data.body.filter((x) => x.date !== d).concat(entry);
         Store.save(); UI.closeSheet(); render(root); UI.toast('保存しました');
       });
     });
   }
 
-  return { render, title: '体組成', FIELDS, entries, val };
+  function refresh() { if (root) render(root); }
+
+  return { render, title: '体組成', FIELDS, entries, val, openForm, refresh };
 })();

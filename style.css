@@ -321,3 +321,21 @@ body:has(#restbar:not([hidden])) .bottom-cta { bottom: calc(var(--tab-h) + var(-
 .rv-list li { display: flex; flex-direction: column; padding: 6px 0; border-top: 1px solid var(--line); }
 .rv-row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line); }
 .review-comment { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 14px; }
+
+/* ===== 写真から読み取り ===== */
+.cta-pair { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; max-width: 616px; margin: 0 auto; }
+.cta-pair .btn { width: 100%; }
+.sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 44px; }
+.sheet-head h3 { margin: 0; flex: 1; }
+.back-btn { min-height: 44px; min-width: 44px; padding: 0 10px 0 4px; border: 0; background: transparent; color: var(--accent); font-size: 17px; font-weight: 600; cursor: pointer; flex: none; }
+.flag { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-left: 6px; white-space: nowrap; }
+.flag.miss { background: var(--warn-soft); color: var(--warn); }
+.flag.unsure { background: var(--accent-soft); color: var(--accent); }
+.bf.missing input, .bf.missing select { border: 2px solid var(--warn); background: var(--warn-soft); }
+.bf.uncertain input, .bf.uncertain select { border: 2px solid var(--accent); }
+.raw pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--bg); padding: 8px; border-radius: 8px; max-height: 200px; overflow: auto; }
+.card.inset { background: var(--bg); box-shadow: none; margin-top: 16px; }
+.card.inset h4 { margin-top: 0; color: var(--text); }
+.steps { padding-left: 20px; margin: 6px 0 10px; }
+.steps li { margin: 3px 0; }
+textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); font: inherit; font-size: 16px; padding: 10px; resize: vertical; }
