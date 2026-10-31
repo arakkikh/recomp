@@ -407,3 +407,20 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; back
 .lib-name { flex: 1; display: flex; flex-direction: column; }
 .lib-name small { font-size: 12px; }
 .yt { text-decoration: none; color: var(--text); }
+
+/* ===== 部位ごとの週のセット数 ===== */
+.seg button { padding: 0 2px; }
+.bal-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 8px 0 4px; }
+.bal-key { display: inline-block; width: 16px; height: 8px; border-radius: 3px; background: var(--good-soft); border: 1px solid var(--good); vertical-align: 0; margin-right: 4px; }
+.bal-row { display: grid; grid-template-columns: 84px 1fr 62px; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.bal-name { font-size: 14px; font-weight: 600; grid-row: 1 / 3; }
+.bal-track { position: relative; height: 12px; background: var(--fill); border-radius: 6px; overflow: hidden; }
+.bal-range { position: absolute; top: 0; bottom: 0; background: var(--good-soft); border-left: 1px solid var(--good); border-right: 1px solid var(--good); }
+.bal-bar { position: relative; height: 100%; border-radius: 6px; background: var(--accent); }
+.bal-bar.low { background: var(--warn); }
+.bal-num { text-align: right; font-variant-numeric: tabular-nums; font-size: 15px; }
+.bal-num small { color: var(--muted); font-size: 11px; }
+.bal-st { grid-column: 2 / 4; font-size: 12px; font-weight: 600; }
+.bal-st.ok { color: var(--good); }
+.bal-st.low { color: var(--warn); }
+.bal-st.high { color: var(--muted); }

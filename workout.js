@@ -2,7 +2,8 @@
 const Workout = (() => {
   const { esc, num } = UI;
   let root;
-  let view = 'today';          // today | history | progress | library
+  let view = 'today';          // today | history | progress | balance | library
+  let balWeek = 0;             // 部位タブで見ている週（0=今週, -1=先週…）
   let pickedDay = null;        // 「別のメニューを選ぶ」で選んだ日
   let progressEx = null;
   let progressMetric = null;
@@ -15,12 +16,13 @@ const Workout = (() => {
   // ================= 画面描画 =================
   function render(el) {
     root = el;
-    const tabs = [['today', active() ? '実施中' : '今日'], ['history', '履歴'], ['progress', '推移'], ['library', '種目']];
+    const tabs = [['today', active() ? '実施中' : '今日'], ['history', '履歴'], ['progress', '推移'], ['balance', '部位'], ['library', '種目']];
     const seg = `<div class="seg" role="tablist">${tabs.map(([k, l]) => `<button role="tab" class="${view === k ? 'on' : ''}" data-act="view" data-v="${k}">${l}</button>`).join('')}</div>`;
     let body = '';
     if (view === 'today') body = active() ? activeHtml() : todayHtml();
     if (view === 'history') body = historyHtml();
     if (view === 'progress') body = progressHtml();
+    if (view === 'balance') body = balanceHtml();
     if (view === 'library') body = libraryHtml();
     el.innerHTML = seg + body;
     el.onclick = onClick;
@@ -180,6 +182,61 @@ const Workout = (() => {
     Chart.line(el, pts, { unit, label: `${ex.name}の推移`, zero: progressMetric === 'volume' });
   }
 
+  // ---- 部位ごとの週のセット数 ----
+  function balanceHtml() {
+    const start = UI.weekStart();
+    start.setDate(start.getDate() + balWeek * 7);
+    const end = new Date(start); end.setDate(end.getDate() + 6);
+    const from = UI.dateStr(start), to = UI.dateStr(end);
+    const counts = Program.groupSets(from, to);
+    const isCur = balWeek === 0;
+    // 今週は経過日数に応じて「このペースなら」の見込みも出す
+    const dayN = isCur ? ((new Date().getDay() + 6) % 7) + 1 : 7;
+    const SCALE = 20;
+    const fmtN = (n) => (Number.isInteger(n) ? n : n.toFixed(1));
+    const low = [];
+    const rows = Exercises.GROUPS.map((g) => {
+      const n = counts[g.k];
+      const st = n < g.min ? 'low' : n > g.max ? 'high' : 'ok';
+      if (st === 'low') low.push(g);
+      const label = st === 'ok' ? '✓ ちょうど' : st === 'low' ? `▲ あと${fmtN(Math.ceil(g.min - n))}` : '● 多め';
+      return `<div class="bal-row">
+        <div class="bal-name">${g.label}</div>
+        <div class="bal-track" aria-hidden="true">
+          <div class="bal-range" style="left:${(g.min / SCALE) * 100}%;width:${((g.max - g.min) / SCALE) * 100}%"></div>
+          <div class="bal-bar ${st}" style="width:${Math.min(100, (n / SCALE) * 100)}%"></div>
+        </div>
+        <div class="bal-num"><b>${fmtN(n)}</b><small>/${g.min}〜${g.max}</small></div>
+        <div class="bal-st ${st}">${label}</div>
+      </div>`;
+    }).join('');
+    // 足りない部位を主に鍛える種目（今のメニューにあるものを優先）
+    const rot = Program.rotation().flatMap((k) => Program.DAYS[k].items);
+    const suggest = low.map((g) => {
+      const exs = Exercises.list.filter((e) => (e.work[g.k] || 0) >= 1).sort((a, b) => rot.includes(b.id) - rot.includes(a.id)).slice(0, 2);
+      return `<li><b>${g.label}</b>：${exs.map((e) => esc(e.name)).join('、')} などを1〜2セット足す</li>`;
+    }).join('');
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    return `
+      <div class="card">
+        <div class="row between">
+          <button class="icon-btn" data-act="bweek" data-d="-1" aria-label="前の週">‹</button>
+          <div class="center"><h3>${isCur ? '今週' : balWeek === -1 ? '先週' : ''}の部位別セット数</h3><span class="muted small">${UI.fmtShort(from)}〜${UI.fmtShort(to)}</span></div>
+          <button class="icon-btn" data-act="bweek" data-d="1" aria-label="次の週" ${isCur ? 'disabled' : ''}>›</button>
+        </div>
+        <div class="bal-legend muted small"><span><i class="bal-key"></i>目安の範囲</span><span>メインで効く種目＝1セット、サブ＝0.5セットで数えています</span></div>
+        ${total ? rows : '<p class="muted center mt">この週の記録はまだありません。</p>'}
+        ${total && isCur && dayN < 7 ? `<p class="hint">今週はまだ途中（${dayN}日目）です。残りのトレーニングで目安に近づけましょう。</p>` : ''}
+      </div>
+      ${total && low.length ? `<div class="card"><h3>バランスを整えるヒント</h3><ul class="tips">${suggest}</ul>
+        <p class="hint">「ワークアウト中」の画面の一番下の「＋ 種目を追加」から足せます。</p></div>` : ''}
+      <div class="card">
+        <h3>目安について</h3>
+        <p class="small">筋肉を増やすには、1つの部位につき<b>週10セット前後</b>が目安とされています。初心者は少なめでも十分伸びるので、大きな部位（胸・背中・肩・脚）は週8〜16セット、腕・ふくらはぎ・体幹は少なめを目安にしています。</p>
+        <p class="hint">きつさの目安：RPE 7〜9（あと1〜3回できる）で行ったセットを数えるのが理想です。ウォームアップは数えません。</p>
+      </div>`;
+  }
+
   // ---- 種目図鑑 ----
   function libraryHtml() {
     return Exercises.PARTS.map((p) => {
@@ -209,6 +266,7 @@ const Workout = (() => {
       case 'cancel': cancel(); break;
       case 'delwk': deleteWorkout(b.dataset.id); break;
       case 'pmetric': progressMetric = b.dataset.m; render(root); break;
+      case 'bweek': balWeek = Math.min(0, balWeek + Number(b.dataset.d)); render(root); break;
     }
   }
   function onChange(e) {

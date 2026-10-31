@@ -131,5 +131,20 @@ const Program = (() => {
     });
   }
 
-  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics };
+  // 期間内（from〜to、YYYY-MM-DD）の部位別セット数。実施中のワークアウトの完了セットも数える
+  function groupSets(from, to) {
+    const out = Object.fromEntries(Exercises.GROUPS.map((g) => [g.k, 0]));
+    const addItem = (exId, n) => {
+      const ex = Exercises.byId[exId];
+      if (!ex) return;
+      for (const k in ex.work) out[k] += ex.work[k] * n;
+    };
+    Store.data.workouts.filter((w) => w.date >= from && w.date <= to)
+      .forEach((w) => w.items.forEach((it) => addItem(it.exId, it.sets.length)));
+    const a = Store.data.active;
+    if (a && a.date >= from && a.date <= to) a.items.forEach((it) => addItem(it.exId, it.sets.filter((s) => s.done).length));
+    return out;
+  }
+
+  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets };
 })();

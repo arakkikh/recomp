@@ -174,9 +174,49 @@ const Exercises = (() => {
     },
   ];
 
+  // 部位ごとの週のセット数を数えるための対応表（メイン＝1セット、サブ＝0.5セットとして数える）
+  const WORK = {
+    db_bench: { chest: 1, shoulders: 0.5, triceps: 0.5 },
+    incline_press: { chest: 1, shoulders: 0.5, triceps: 0.5 },
+    dips: { chest: 1, triceps: 1, shoulders: 0.5 },
+    one_arm_row: { back: 1, biceps: 0.5 },
+    incline_row: { back: 1, shoulders: 0.5, biceps: 0.5 },
+    pullup: { back: 1, biceps: 0.5 },
+    chinup: { back: 1, biceps: 1 },
+    seated_press: { shoulders: 1, triceps: 0.5 },
+    side_raise: { shoulders: 1 },
+    rear_raise: { shoulders: 1, back: 0.5 },
+    db_curl: { biceps: 1 },
+    oh_triceps: { triceps: 1 },
+    goblet_squat: { quads: 1, glutes: 0.5 },
+    db_rdl: { glutes: 1 },
+    bulgarian: { quads: 1, glutes: 1 },
+    step_up: { quads: 1, glutes: 0.5 },
+    hip_thrust: { glutes: 1 },
+    calf_raise: { calves: 1 },
+    plank: { core: 1 },
+    hanging_knee: { core: 1 },
+    dead_bug: { core: 1 },
+    stepper: {},
+  };
+  list.forEach((e) => { e.work = WORK[e.id] || {}; });
+
+  // 部位と、40代初心者向けの週のセット数の目安
+  const GROUPS = [
+    { k: 'chest', label: '胸', min: 8, max: 16 },
+    { k: 'back', label: '背中', min: 8, max: 16 },
+    { k: 'shoulders', label: '肩', min: 6, max: 16 },
+    { k: 'quads', label: '前もも', min: 8, max: 16 },
+    { k: 'glutes', label: 'お尻・裏もも', min: 10, max: 20 }, // 2つの部位をまとめているので広め
+    { k: 'biceps', label: '腕（力こぶ）', min: 4, max: 10 },
+    { k: 'triceps', label: '腕（二の腕）', min: 4, max: 10 },
+    { k: 'calves', label: 'ふくらはぎ', min: 3, max: 9 },
+    { k: 'core', label: '体幹', min: 4, max: 10 },
+  ];
+
   const byId = Object.fromEntries(list.map((e) => [e.id, e]));
   const PARTS = ['胸', '背中', '肩', '腕', '脚・お尻', '体幹', '有酸素'];
   const UNIT_LABEL = { kg: 'kg', bw: '回', sec: '秒', min: '分' };
 
-  return { list, byId, PARTS, UNIT_LABEL };
+  return { list, byId, PARTS, UNIT_LABEL, GROUPS };
 })();
