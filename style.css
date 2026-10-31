@@ -354,3 +354,24 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; back
 .form-foot .btn[hidden] { display: none; }
 /* hidden を指定した要素は、ボタンの表示設定より優先して必ず隠す */
 [hidden] { display: none !important; }
+
+/* ===== 将来予測 ===== */
+.chart .fc-band { fill: var(--chart-line); opacity: .14; }
+.chart .fc-line { fill: none; stroke: var(--chart-line); stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; }
+.chart .fc-dot { fill: var(--card); stroke: var(--chart-line); stroke-width: 2; }
+.fc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin: 4px 2px 0; }
+.fc-legend i { display: inline-block; width: 18px; height: 0; vertical-align: middle; margin-right: 5px; border-top: 2px solid var(--chart-line); }
+.fc-legend i.dash { border-top-style: dashed; }
+.fc-legend i.band { height: 10px; border: 0; background: var(--chart-line); opacity: .2; border-radius: 2px; }
+.fc-table td:nth-child(2) { font-weight: 700; font-size: 15px; }
+.fc-table td { text-align: right; font-variant-numeric: tabular-nums; }
+.fc-table td:first-child { text-align: left; }
+.goal-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.goal-list li { padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.goal-list li b { display: block; }
+.calib { font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--fill); margin-top: 10px; }
+.calib.on { background: var(--good-soft); }
+.basis h4 { color: var(--text); }
+.basis p, .basis li { font-size: 14px; }
+.basis ul { padding-left: 18px; margin: 4px 0; }
+.goal-list li b.inline { display: inline; }

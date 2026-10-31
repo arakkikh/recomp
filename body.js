@@ -49,10 +49,10 @@ const Body = (() => {
   function render(el) {
     root = el;
     const es = entries();
-    el.innerHTML = es.length ? summaryHtml(es) + recompHtml(es) + chartHtml() + listHtml(es) + ctaHtml() : emptyHtml() + ctaHtml();
+    el.innerHTML = es.length ? summaryHtml(es) + recompHtml(es) + Forecast.html() + chartHtml() + listHtml(es) + ctaHtml() : emptyHtml() + ctaHtml();
     el.onclick = onClick;
     el.onchange = null;
-    if (es.length) drawChart();
+    if (es.length) { Forecast.draw(el); drawChart(); }
   }
 
   const ctaHtml = () => `<div class="bottom-cta"><div class="cta-pair">
@@ -167,6 +167,8 @@ const Body = (() => {
     switch (b.dataset.act) {
       case 'add': openForm(UI.dateStr()); break;
       case 'scan': BodyImport.open(); break;
+      case 'fmetric': Forecast.setMetric(b.dataset.k); render(root); break;
+      case 'fbasis': Forecast.openBasis(); break;
       case 'edit': openForm(b.dataset.date, { edit: true }); break;
       case 'metric': metric = b.dataset.k; render(root); break;
       case 'range': range = b.dataset.r; render(root); break;

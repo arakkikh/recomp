@@ -61,7 +61,13 @@ const Settings = {
         <h3>体組成</h3>
         <label class="field"><span>体脂肪率の目標</span>
           <select data-k="goalFatPct">${[15, 16, 17, 18, 19, 20, 21, 22, 23, 24].map((v) => opt(v, st.goalFatPct, v + ' %')).join('')}</select></label>
-        <p class="hint">体組成グラフの「体脂肪率」に点線で表示します。</p>
+        <label class="field"><span>内臓脂肪レベルの目標</span>
+          <select data-k="goalVisceral" data-type="numnull">${opt('', st.goalVisceral ?? '', '未設定')}${[5, 6, 7, 8, 9, 9.5].map((v) => opt(v, st.goalVisceral, v + (v === 9.5 ? '（標準の上限）' : ''))).join('')}</select></label>
+        <label class="field"><span>筋肉量の目標</span>
+          <select data-k="goalMuscleKg" data-type="numnull">${opt('', st.goalMuscleKg ?? '', '未設定')}${Array.from({ length: 41 }, (_, i) => 40 + i * 0.5).map((v) => opt(v, st.goalMuscleKg, v.toFixed(1) + ' kg')).join('')}</select></label>
+        <label class="field"><span>体重の目標</span>
+          <select data-k="goalWeight" data-type="numnull">${opt('', st.goalWeight ?? '', '未設定（今の体重を維持）')}${Array.from({ length: 81 }, (_, i) => 50 + i * 0.5).map((v) => opt(v, st.goalWeight, v.toFixed(1) + ' kg')).join('')}</select></label>
+        <p class="hint">体脂肪率の目標はグラフに点線で表示します。どの目標も、体組成タブの「将来予測のガイド」で達成までの見込みを表示します。</p>
       </div>
       <div class="card">
         <h3>表示</h3>
@@ -85,7 +91,7 @@ const Settings = {
       if (t.dataset.k) {
         const v = t.value;
         if (t.dataset.type === 'str' && !v) { t.value = st[t.dataset.k]; return; }
-        st[t.dataset.k] = t.dataset.k === 'theme' || t.dataset.type === 'str' ? v : t.dataset.type === 'bool' ? v === 'true' : Number(v);
+        st[t.dataset.k] = t.dataset.k === 'theme' || t.dataset.type === 'str' ? v : t.dataset.type === 'bool' ? v === 'true' : t.dataset.type === 'numnull' && v === '' ? null : Number(v);
         Store.save();
         App.applyTheme();
         UI.toast('保存しました');

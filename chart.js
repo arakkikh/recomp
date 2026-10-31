@@ -33,10 +33,13 @@ const Chart = (() => {
     const iw = W - m.l - m.r;
     const ih = H - m.t - m.b;
 
+    // 予測（opt.forecast = [{x, y, lo, hi, label?}]）は破線＋幅の帯で描く
+    const fc = opt.forecast || [];
+    const fxs = fc.map((p) => UI.parseDate(p.x).getTime());
     const xs = points.map((p) => UI.parseDate(p.x).getTime());
-    let x0 = Math.min(...xs), x1 = Math.max(...xs);
+    let x0 = Math.min(...xs, ...fxs), x1 = Math.max(...xs, ...fxs);
     if (x0 === x1) { x0 -= 3 * 864e5; x1 += 3 * 864e5; }
-    const ys = points.map((p) => p.y);
+    const ys = points.map((p) => p.y).concat(fc.flatMap((p) => [p.lo, p.hi, p.y]));
     let yMin = Math.min(...ys), yMax = Math.max(...ys);
     // 目標線・基準線（opt.ref）も表示範囲に含める
     if (opt.ref && Number.isFinite(opt.ref.y)) { yMin = Math.min(yMin, opt.ref.y); yMax = Math.max(yMax, opt.ref.y); }
@@ -64,8 +67,16 @@ const Chart = (() => {
       add('line', { x1: m.l, x2: W - m.r, y1: sy(v), y2: sy(v), class: 'grid' });
       add('text', { x: m.l - 6, y: sy(v) + 4, class: 'axis', 'text-anchor': 'end' }).textContent = UI.num(v);
     }
-    // X軸ラベル（最大5つ）
-    const nx = Math.min(5, points.length);
+    // X軸ラベル（最大5つ。予測があるときは最初の記録日と予測の区切りだけ）
+    if (fc.length) {
+      add('text', { x: sx(xs[0]), y: H - 8, class: 'axis', 'text-anchor': 'start' }).textContent = UI.fmtShort(points[0].x);
+      fc.forEach((p, i) => {
+        if (!p.label) return;
+        const last = i === fc.length - 1;
+        add('text', { x: sx(fxs[i]), y: H - 8, class: 'axis', 'text-anchor': last ? 'end' : 'middle' }).textContent = p.label;
+      });
+    }
+    const nx = fc.length ? 0 : Math.min(5, points.length);
     const used = new Set();
     for (let i = 0; i < nx; i++) {
       const idx = nx === 1 ? 0 : Math.round((i * (points.length - 1)) / (nx - 1));
@@ -81,6 +92,15 @@ const Chart = (() => {
       add('text', { x: m.l + 4, y: sy(opt.ref.y) - 5, class: 'ref-label' }).textContent = `${opt.ref.label} ${fmt(opt.ref.y)}${unit}`;
     }
 
+    // 予測の帯と破線
+    if (fc.length) {
+      const up = fc.map((p, i) => `${i ? 'L' : 'M'}${sx(fxs[i]).toFixed(1)},${sy(p.hi).toFixed(1)}`).join('');
+      const down = fc.slice().reverse().map((p, i) => `L${sx(fxs[fc.length - 1 - i]).toFixed(1)},${sy(p.lo).toFixed(1)}`).join('');
+      add('path', { d: `${up}${down}Z`, class: 'fc-band' });
+      add('path', { d: fc.map((p, i) => `${i ? 'L' : 'M'}${sx(fxs[i]).toFixed(1)},${sy(p.y).toFixed(1)}`).join(''), class: 'fc-line' });
+      fc.forEach((p, i) => { if (i) add('circle', { cx: sx(fxs[i]), cy: sy(p.y), r: 4, class: 'fc-dot' }); });
+    }
+
     // 線と点
     const d = points.map((p, i) => `${i ? 'L' : 'M'}${sx(xs[i]).toFixed(1)},${sy(p.y).toFixed(1)}`).join('');
     add('path', { d, class: 'series-line' });
@@ -88,8 +108,13 @@ const Chart = (() => {
 
     // 最新値のラベル
     const li = points.length - 1;
-    const lastLabel = add('text', { x: Math.min(sx(xs[li]), W - m.r), y: sy(points[li].y) - 10, class: 'value-label', 'text-anchor': 'end' });
-    lastLabel.textContent = `${fmt(points[li].y)}${unit}`;
+    const lastP = fc.length ? { t: fxs[fc.length - 1], y: fc[fc.length - 1].y } : { t: xs[li], y: points[li].y };
+    const lastLabel = add('text', { x: Math.min(sx(lastP.t), W - m.r), y: sy(lastP.y) - 10, class: 'value-label', 'text-anchor': 'end' });
+    lastLabel.textContent = `${fmt(lastP.y)}${unit}`;
+
+    // タップで値を出す対象（実績＋予測）
+    const targets = points.map((p, i) => ({ t: xs[i], y: p.y, html: `<b>${fmt(p.y)}${unit}</b><span>${UI.fmtDate(p.x)}${opt.pointLabel ? ' ' + opt.pointLabel : ''}</span>` }))
+      .concat(fc.slice(1).map((p, i) => ({ t: fxs[i + 1], y: p.y, html: `<b>${fmt(p.y)}${unit}</b><span>${p.tip || p.label || UI.fmtShort(p.x)} 幅 ${fmt(p.lo)}〜${fmt(p.hi)}</span>` })));
 
     // ホバー層
     const hover = add('g', { class: 'hover', style: 'display:none' });
@@ -106,13 +131,13 @@ const Chart = (() => {
       const r = svg.getBoundingClientRect();
       const x = ((clientX - r.left) / r.width) * W;
       let best = 0;
-      xs.forEach((t, i) => { if (Math.abs(sx(t) - x) < Math.abs(sx(xs[best]) - x)) best = i; });
-      const px = sx(xs[best]), py = sy(points[best].y);
+      targets.forEach((g, i) => { if (Math.abs(sx(g.t) - x) < Math.abs(sx(targets[best].t) - x)) best = i; });
+      const px = sx(targets[best].t), py = sy(targets[best].y);
       hover.style.display = '';
       lastLabel.style.display = 'none';
       vline.setAttribute('x1', px); vline.setAttribute('x2', px);
       hdot.setAttribute('cx', px); hdot.setAttribute('cy', py);
-      tip.innerHTML = `<b>${fmt(points[best].y)}${unit}</b><span>${UI.fmtDate(points[best].x)}</span>`;
+      tip.innerHTML = targets[best].html;
       tip.style.display = 'block';
       const left = (px / W) * r.width;
       tip.style.left = `${Math.min(Math.max(left, 50), r.width - 50)}px`;
