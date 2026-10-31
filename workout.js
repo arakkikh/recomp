@@ -68,6 +68,22 @@ const Workout = (() => {
   }
 
   // ---- 実施中 ----
+  // 前回の同じ番号のセット（前回のほうがセット数が少なければ null）
+  function prevSetOf(exId, j) {
+    const prev = Program.sessionsFor(exId)[0];
+    return prev && prev.sets[j] ? { ...prev.sets[j], date: prev.date } : null;
+  }
+  function prevText(ex, p) {
+    if (ex.unit === 'sec' || ex.unit === 'min') return `${num(p.reps)}${U[ex.unit]}`;
+    const w = ex.unit === 'bw' ? (p.weight > 0 ? `+${num(p.weight)}kg` : '自重') : `${num(p.weight)}kg`;
+    return `${w}×${p.reps}${p.rpe ? ` RPE${p.rpe}` : ''}`;
+  }
+  // 今回のセットが前回より上か（重量が上、または同じ重量で回数が上）
+  function beatsPrev(s, p) {
+    const w = s.weight || 0, pw = p.weight || 0;
+    return w > pw || (w === pw && s.reps > p.reps);
+  }
+
   function setLabel(ex, s) {
     if (ex.unit === 'sec' || ex.unit === 'min') return `<b>${num(s.reps)}</b><small>${U[ex.unit]}</small>`;
     const w = ex.unit === 'bw' ? (s.weight > 0 ? `+${num(s.weight)}<small>kg</small>` : '自重') : `${num(s.weight)}<small>kg</small>`;
@@ -100,7 +116,10 @@ const Workout = (() => {
         <li class="set ${s.done ? 'done' : ''}">
           <button class="set-main" data-act="edit" data-i="${i}" data-s="${j}" aria-label="セット${j + 1}を編集">
             <span class="set-no">${j + 1}</span>
-            <span class="set-val">${setLabel(ex, s)}</span>
+            <span class="set-mid">
+              <span class="set-val">${setLabel(ex, s)}</span>
+              ${(() => { const p = prevSetOf(ex.id, j); return p ? `<span class="set-prev">前回 ${esc(prevText(ex, p))}${s.done && beatsPrev(s, p) ? ' <b class="up">↑</b>' : ''}</span>` : ''; })()}
+            </span>
             <span class="set-rpe">${s.pr && s.done ? '<span class="pr-badge" title="自己ベスト">🏆</span>' : ''}${s.rpe ? 'RPE ' + s.rpe : ''}</span>
           </button>
           <button class="check" data-act="toggle" data-i="${i}" data-s="${j}" aria-label="完了">✓</button>
@@ -410,6 +429,7 @@ const Workout = (() => {
       ${UI.sheetHead(`${esc(ex.name)} — セット${s + 1}`)}
       ${timeUnit ? '' : stepper('weight', ex.unit === 'bw' ? '加重（kg、自重のみなら0）' : `重量（片手 kg）${ex.note && ex.note.includes('1個') ? ' ※ダンベル1個' : ''}`, inc, set.weight || 0, 'decimal')}
       ${stepper('reps', timeUnit ? `時間（${U[ex.unit]}）` : '回数', repStep, set.reps, 'numeric')}
+      ${(() => { const p = prevSetOf(ex.id, s); return p ? `<div class="prev-box"><span>前回（${UI.fmtShort(p.date)}）のセット${s + 1}：<b>${esc(prevText(ex, p))}</b></span><button class="btn small" data-same="1">前回と同じにする</button></div>` : ''; })()}
       <label class="field-label">RPE（きつさ）</label>
       <div class="chips rpe">${RPES.map((r) => `<button class="chip ${set.rpe === r ? 'on' : ''}" data-rpe="${r}">${r}</button>`).join('')}</div>
       <p class="hint">7＝あと3回できる / 8＝あと2回 / 9＝あと1回 / 10＝限界</p>
@@ -418,6 +438,14 @@ const Workout = (() => {
     UI.sheet(html, (sh) => {
       const read = (k) => { const v = parseFloat((sh.querySelector(`#in-${k}`)?.value || '').replace(',', '.')); return Number.isFinite(v) ? v : 0; };
       sh.addEventListener('click', (e) => {
+        if (e.target.closest('[data-same]')) {
+          const p = prevSetOf(ex.id, s);
+          const wIn = sh.querySelector('#in-weight');
+          if (wIn) wIn.value = num(p.weight || 0);
+          sh.querySelector('#in-reps').value = num(p.reps);
+          UI.toast('前回と同じ値にしました');
+          return;
+        }
         const st = e.target.closest('[data-k]');
         if (st) {
           const k = st.dataset.k;
