@@ -28,6 +28,17 @@ const UI = (() => {
     sheetEl = null;
     document.body.classList.remove('no-scroll');
   }
+  function fitViewport() {
+    const vv = window.visualViewport;
+    if (!sheetEl || !vv) return;
+    sheetEl.style.top = `${vv.offsetTop}px`;
+    sheetEl.style.height = `${vv.height}px`;
+    sheetEl.style.bottom = 'auto';
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fitViewport);
+    window.visualViewport.addEventListener('scroll', fitViewport);
+  }
   function sheet(html, onMount) {
     removeSheet();
     if (!pushed) { history.pushState({ sheet: 1 }, ''); pushed = true; }
@@ -37,6 +48,7 @@ const UI = (() => {
     sheetEl.addEventListener('click', (e) => { if (e.target === sheetEl) closeSheet(); });
     document.body.appendChild(sheetEl);
     document.body.classList.add('no-scroll');
+    fitViewport();
     requestAnimationFrame(() => sheetEl && sheetEl.classList.add('open'));
     if (onMount) onMount(sheetEl.querySelector('.sheet'));
     return sheetEl;

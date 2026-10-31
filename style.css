@@ -164,7 +164,9 @@ body:has(#restbar:not([hidden])) .bottom-cta { bottom: calc(var(--tab-h) + var(-
 .sheet-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0); transition: background .2s; display: flex; align-items: flex-end; justify-content: center; }
 .sheet-overlay.open { background: rgba(0,0,0,.4); }
 .sheet {
-  width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  width: 100%; max-width: 640px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  /* 実際に見えている高さ（ツールバー・キーボードを除く）に収める。上に通知バー分の余白を残す */
+  max-height: calc(100% - env(safe-area-inset-top, 0px) - 16px);
   background: var(--card); border-radius: 18px 18px 0 0; padding: 8px 16px calc(16px + var(--safe-b));
   transform: translateY(100%); transition: transform .22s ease-out;
 }
@@ -325,7 +327,12 @@ body:has(#restbar:not([hidden])) .bottom-cta { bottom: calc(var(--tab-h) + var(-
 /* ===== 写真から読み取り ===== */
 .cta-pair { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; max-width: 616px; margin: 0 auto; }
 .cta-pair .btn { width: 100%; }
-.sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 44px; }
+.sheet-head {
+  display: flex; align-items: center; gap: 8px; min-height: 48px;
+  /* スクロールしても「戻る」が常に見えるよう、シートの上端に固定 */
+  position: sticky; top: -8px; z-index: 3; background: var(--card);
+  margin: -8px -16px 8px; padding: 8px 16px 4px; border-bottom: 1px solid var(--line);
+}
 .sheet-head h3 { margin: 0; flex: 1; }
 .back-btn { min-height: 44px; min-width: 44px; padding: 0 10px 0 4px; border: 0; background: transparent; color: var(--accent); font-size: 17px; font-weight: 600; cursor: pointer; flex: none; }
 .flag { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-left: 6px; white-space: nowrap; }
@@ -339,3 +346,5 @@ body:has(#restbar:not([hidden])) .bottom-cta { bottom: calc(var(--tab-h) + var(-
 .steps { padding-left: 20px; margin: 6px 0 10px; }
 .steps li { margin: 3px 0; }
 textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); font: inherit; font-size: 16px; padding: 10px; resize: vertical; }
+/* 見出し行があるシートでは、つまみ（灰色の線）を出さず見出しを一番上に */
+.sheet-grip:has(+ .sheet-head) { display: none; }
