@@ -79,13 +79,14 @@ const Settings = {
       <div class="card">
         <h3>バックアップ</h3>
         <p class="muted small">最終バックアップ：${lb}</p>
+        <label class="check-row" id="exp-ph-row" hidden><input type="checkbox" id="exp-ph"> <span>写真も含める <small class="muted" id="exp-ph-size"></small></span></label>
         <button class="btn block" data-act="export">JSONをエクスポート（保存）</button>
         <label class="btn block mt file-btn">JSONをインポート（復元）<input type="file" accept="application/json,.json" data-act="import" hidden></label>
-        <p class="hint">データはこの端末のブラウザの中にだけ保存されています。iPhoneとMacの間でデータを移すときや、機種変更の前にエクスポートしてください。</p>
+        <p class="hint">データはこの端末のブラウザの中にだけ保存されています。iPhoneとMacの間でデータを移すときや、機種変更の前にエクスポートしてください。写真を含めると、写真1枚あたり約0.3MBファイルが大きくなります。</p>
       </div>
       <div class="card">
         <h3>データの削除</h3>
-        <button class="btn block ghost danger" data-act="reset">すべてのデータを削除</button>
+        <button class="btn block ghost danger" data-act="reset">すべてのデータを削除（写真も含む）</button>
       </div>
       <p class="muted small center">Recomp v1.0</p>`;
     el.onchange = (e) => {
@@ -113,18 +114,35 @@ const Settings = {
       if (t.dataset.act === 'import' && t.files[0]) {
         if (!confirm('今のデータをバックアップの内容で置き換えます。よろしいですか？')) { t.value = ''; return; }
         Store.importJSON(t.files[0])
-          .then(() => { App.applyTheme(); UI.toast('復元しました'); App.render(); })
+          .then((r) => { App.applyTheme(); UI.toast(r && r.photos ? `復元しました（写真${r.photos}枚）` : '復元しました'); App.render(); })
           .catch((err) => UI.toast('読み込めませんでした：' + err.message));
       }
     };
     el.onclick = (e) => {
       const b = e.target.closest('[data-act]');
       if (!b) return;
-      if (b.dataset.act === 'export') { Store.exportJSON(); setTimeout(() => App.render(), 300); }
-      if (b.dataset.act === 'reset' && confirm('すべての記録を削除します。元に戻せません。よろしいですか？') && confirm('本当に削除しますか？')) {
-        Store.reset(); App.applyTheme(); App.render(); UI.toast('削除しました');
+      if (b.dataset.act === 'export') {
+        const withPh = el.querySelector('#exp-ph');
+        if (withPh && withPh.checked && !photoCache) { UI.toast('写真を準備中です。少し待ってからもう一度押してください'); return; }
+        Store.exportJSON(withPh && withPh.checked ? photoCache : null);
+        setTimeout(() => App.render(), 300);
+      }
+      if (b.dataset.act === 'reset' && confirm('すべての記録と写真を削除します。元に戻せません。よろしいですか？') && confirm('本当に削除しますか？')) {
+        Store.reset(); Photos.clear().catch(() => {}); App.applyTheme(); App.render(); UI.toast('削除しました');
       }
     };
+    // 写真があれば「写真も含める」を出す。チェックしたら先に写真を読み込んでおく
+    // （iPhoneでは、ボタンを押した直後でないと保存が始まらないため）
+    let photoCache = null;
+    Photos.stats().then(({ count, mb }) => {
+      const row = el.querySelector('#exp-ph-row');
+      if (!row || !count) return;
+      row.hidden = false;
+      el.querySelector('#exp-ph-size').textContent = `（${count}枚・約${mb.toFixed(1)}MB）`;
+      el.querySelector('#exp-ph').addEventListener('change', (e) => {
+        if (e.target.checked && !photoCache) Photos.exportAll().then((arr) => { photoCache = arr; });
+      });
+    });
   },
 };
 

@@ -30,6 +30,7 @@ const Store = (() => {
       habits: d.habits && typeof d.habits === 'object' ? d.habits : {},
       deload: { ...base.deload, ...(d.deload || {}), history: (d.deload && Array.isArray(d.deload.history)) ? d.deload.history : [] },
       version: VERSION,
+      photos: undefined, // 写真は localStorage には入れない（IndexedDB に別保存）
     };
   }
 
@@ -44,10 +45,12 @@ const Store = (() => {
     catch (e) { UI.toast('保存に失敗しました（容量不足の可能性）'); console.error(e); }
   }
 
-  function exportJSON() {
+  // photos を渡すと、写真も一緒に書き出す（ファイルが大きくなる）
+  function exportJSON(photos = null) {
     data.settings.lastBackup = new Date().toISOString();
     save();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const out = photos && photos.length ? { ...data, photos } : data;
+    const blob = new Blob([JSON.stringify(out, photos ? 0 : 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `recomp-backup-${UI.dateStr()}.json`;
@@ -64,7 +67,11 @@ const Store = (() => {
       }
       data = normalize(parsed);
       save();
-      return data;
+      // 写真が含まれていれば、写真の保存場所へ戻す
+      if (Array.isArray(parsed.photos) && parsed.photos.length && typeof Photos !== 'undefined') {
+        return Photos.importAll(parsed.photos).then((n) => ({ data, photos: n }));
+      }
+      return { data, photos: 0 };
     });
   }
 

@@ -49,10 +49,11 @@ const Body = (() => {
   function render(el) {
     root = el;
     const es = entries();
-    el.innerHTML = es.length ? summaryHtml(es) + recompHtml(es) + Forecast.html() + chartHtml() + listHtml(es) + ctaHtml() : emptyHtml() + ctaHtml();
+    el.innerHTML = es.length ? summaryHtml(es) + recompHtml(es) + Forecast.html() + chartHtml() + Photos.cardHtml() + listHtml(es) + ctaHtml() : emptyHtml() + Photos.cardHtml() + ctaHtml();
     el.onclick = onClick;
     el.onchange = null;
     if (es.length) { Forecast.draw(el); drawChart(); }
+    Photos.fill(el);
   }
 
   const ctaHtml = () => `<div class="bottom-cta"><div class="cta-pair">
