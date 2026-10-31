@@ -101,7 +101,7 @@ const Workout = (() => {
           <button class="set-main" data-act="edit" data-i="${i}" data-s="${j}" aria-label="セット${j + 1}を編集">
             <span class="set-no">${j + 1}</span>
             <span class="set-val">${setLabel(ex, s)}</span>
-            <span class="set-rpe">${s.rpe ? 'RPE ' + s.rpe : ''}</span>
+            <span class="set-rpe">${s.pr && s.done ? '<span class="pr-badge" title="自己ベスト">🏆</span>' : ''}${s.rpe ? 'RPE ' + s.rpe : ''}</span>
           </button>
           <button class="check" data-act="toggle" data-i="${i}" data-s="${j}" aria-label="完了">✓</button>
         </li>`).join('');
@@ -150,15 +150,16 @@ const Workout = (() => {
     return ws.map((w) => {
       const min = w.finishedAt && w.startedAt ? Math.round((w.finishedAt - w.startedAt) / 60000) : null;
       const setsN = w.items.reduce((a, it) => a + it.sets.length, 0);
+      const prN = w.items.reduce((a, it) => a + it.sets.filter((s) => s.pr).length, 0);
       const rows = w.items.map((it) => {
         const ex = Exercises.byId[it.exId];
-        return ex ? `<li><span>${esc(ex.name)}</span><span class="muted">${esc(Program.fmtSets(it.exId, it.sets))}</span></li>` : '';
+        return ex ? `<li><span>${esc(ex.name)}${it.sets.some((s) => s.pr) ? ' 🏆' : ''}</span><span class="muted">${esc(Program.fmtSets(it.exId, it.sets))}</span></li>` : '';
       }).join('');
       return `
         <details class="card hist">
           <summary>
             <div><b>${UI.fmtDate(w.date)}</b> ${esc(Program.DAYS[w.dayKey]?.name || '')}</div>
-            <div class="muted small">${w.items.length}種目 · ${setsN}セット${min ? ` · ${min}分` : ''}</div>
+            <div class="muted small">${w.items.length}種目 · ${setsN}セット${min ? ` · ${min}分` : ''}${prN ? ` · 🏆${prN}` : ''}</div>
           </summary>
           <ul class="hist-list">${rows}</ul>
           <button class="btn small ghost danger" data-act="delwk" data-id="${w.id}">この記録を削除</button>
@@ -189,11 +190,46 @@ const Workout = (() => {
           <select data-act="pex">${withData.map((e) => `<option value="${e.id}" ${e.id === progressEx ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
         </label>
         <div class="chips">${ms.map(([k, l]) => `<button class="chip ${k === progressMetric ? 'on' : ''}" data-act="pmetric" data-m="${k}">${l}</button>`).join('')}</div>
+        ${prCardHtml(ex)}
         <h3 class="chart-title">${esc(ms.find(([k]) => k === progressMetric)[1])}</h3>
         <div id="pchart"></div>
         <p class="hint">${progressMetric === 'e1rm' ? '推定1RM＝1回だけ挙げられる重量の推定値（重量×(1+回数÷30)）。重量と回数の伸びをまとめて見られます。' : progressMetric === 'volume' ? '総負荷量＝重量×回数の合計（片手の重量で計算）。' : ''}グラフをタップすると値が出ます。</p>
       </div>
-      <div class="card"><h3>記録一覧</h3><table class="tbl"><tbody>${rows}</tbody></table></div>`;
+      <div class="card"><h3>記録一覧</h3><table class="tbl"><tbody>${rows}</tbody></table></div>
+      ${recentPRHtml()}`;
+  }
+
+  // 選んだ種目の自己ベスト
+  function prCardHtml(ex) {
+    const b = Program.bests(ex.id);
+    if (!b.maxReps) return '';
+    const d = (x) => `<small class="muted">${UI.fmtShort(x.date)}</small>`;
+    const u = U[ex.unit];
+    let rows = [];
+    if (ex.unit === 'kg') {
+      rows = [
+        ['最大重量', `${UI.num(b.maxW.v)}kg × ${b.maxW.reps}回`, b.maxW],
+        ['推定1RM', `${UI.num(Math.round(b.e1rm.v * 10) / 10)}kg <small class="muted">(${UI.num(b.e1rm.w)}kg×${b.e1rm.r}回から)</small>`, b.e1rm],
+        ['最多回数', `${b.maxReps.v}回 <small class="muted">(${UI.num(b.maxReps.w)}kg)</small>`, b.maxReps],
+      ];
+    } else if (ex.unit === 'bw') {
+      rows = [['最多回数', `${b.maxReps.v}回${b.maxReps.w > 0 ? ` <small class="muted">(+${UI.num(b.maxReps.w)}kg)</small>` : ''}`, b.maxReps]];
+      if (b.maxW.v > 0) rows.push(['最大加重', `+${UI.num(b.maxW.v)}kg × ${b.maxW.reps}回`, b.maxW]);
+    } else {
+      rows = [['最長', `${b.maxReps.v}${u}`, b.maxReps]];
+    }
+    return `<div class="pr-card"><div class="pr-title">🏆 自己ベスト</div>${rows.map(([l, v, x]) => `<div class="pr-row"><span>${l}</span><span>${v} ${d(x)}</span></div>`).join('')}</div>`;
+  }
+
+  // 最近更新した自己ベスト（全種目）
+  function recentPRHtml() {
+    const list = Program.recentPRs(10);
+    if (!list.length) return '<div class="card"><h3>🏆 最近の自己ベスト</h3><p class="muted small">セットを完了したときに、重量・回数・推定1RMのどれかが今までの最高を超えると、ここに残ります（その種目の2回目以降の記録から）。</p></div>';
+    const NAME = { weight: '最大重量', e1rm: '推定1RM', reps: '最多回数', time: '最長' };
+    return `<div class="card"><h3>🏆 最近の自己ベスト</h3><ul class="pr-list">${list.map((p) => {
+      const ex = Exercises.byId[p.exId];
+      return ex ? `<li><span class="muted small">${UI.fmtShort(p.date)}</span><b>${esc(ex.name)}</b><span>${esc(Program.fmtSets(p.exId, [p.set]))} <small class="muted">${p.set.pr.map((t) => NAME[t] || t).join('・')}</small></span></li>` : '';
+    }).join('')}</ul></div>`;
   }
 
   function drawProgress() {
@@ -337,9 +373,21 @@ const Workout = (() => {
       const ex = Exercises.byId[it.exId];
       const sec = ex.rest === 0 ? 0 : ex.rest || S().settings.restSec;
       if (sec) Rest.start(sec);
-      // 次の未完了セットへスクロール補助はせず、そのまま
+      markPR(it, set);
+    } else {
+      delete set.pr;
     }
     persist();
+  }
+
+  // 今終えたセットが自己ベストなら、🏆を付けてお祝いする
+  function markPR(it, set) {
+    const others = it.sets.filter((x) => x !== set && x.done);
+    const prs = Program.checkPR(it.exId, set, others);
+    if (!prs.length) { delete set.pr; return; }
+    set.pr = prs.map((p) => p.type);
+    const ex = Exercises.byId[it.exId];
+    UI.celebrate(`自己ベスト更新！ ${ex.name}`, prs.map((p) => `<b>${esc(p.label)}</b> ${esc(p.text)}`));
   }
 
   // ---- セット編集シート ----
@@ -398,6 +446,8 @@ const Workout = (() => {
           const sec = ex.rest === 0 ? 0 : ex.rest || S().settings.restSec;
           if (sec) Rest.start(sec);
         }
+        // 完了したセットは（数字を直した場合も）自己ベストを判定し直す
+        if (set.done) markPR(it, set); else delete set.pr;
         persist();
       });
     });
@@ -475,7 +525,7 @@ const Workout = (() => {
   function finish() {
     const a = active();
     const items = a.items
-      .map((it) => ({ exId: it.exId, sets: it.sets.filter((s) => s.done).map(({ weight, reps, rpe }) => ({ weight: weight || 0, reps, rpe: rpe || null })) }))
+      .map((it) => ({ exId: it.exId, sets: it.sets.filter((s) => s.done).map(({ weight, reps, rpe, pr }) => ({ weight: weight || 0, reps, rpe: rpe || null, ...(pr && pr.length ? { pr } : {}) })) }))
       .filter((it) => it.sets.length);
     if (!items.length) {
       if (confirm('完了したセットがありません。記録せずに終了しますか？')) { endActive(); }
@@ -486,7 +536,8 @@ const Workout = (() => {
     S().workouts.push({ id: a.id, date: a.date, dayKey: a.dayKey, startedAt: a.startedAt, finishedAt: Date.now(), items });
     endActive();
     const sets = items.reduce((n, it) => n + it.sets.length, 0);
-    UI.toast(`お疲れさまでした！ ${items.length}種目・${sets}セットを記録しました`);
+    const prN = items.reduce((n, it) => n + it.sets.filter((s) => s.pr).length, 0);
+    UI.toast(`お疲れさまでした！ ${items.length}種目・${sets}セットを記録しました${prN ? `（🏆自己ベスト${prN}回）` : ''}`);
   }
 
   function cancel() {

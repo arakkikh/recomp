@@ -99,10 +99,48 @@ const UI = (() => {
     }
   }
   const vibrate = (p) => { if (navigator.vibrate) navigator.vibrate(p); };
+  function fanfare() {
+    if (!audioCtx) return;
+    [523, 659, 784, 1047].forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      const t0 = audioCtx.currentTime + i * 0.12;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + (i === 3 ? 0.6 : 0.2));
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0); o.stop(t0 + 0.7);
+    });
+  }
+
+  // ---- お祝い表示（自己ベスト更新など）。タップか4秒で閉じる ----
+  function celebrate(title, lines = []) {
+    document.querySelectorAll('.celebrate').forEach((n) => n.remove());
+    const el = document.createElement('div');
+    el.className = 'celebrate';
+    el.setAttribute('role', 'alert');
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const COLORS = ['#1f6fe0', '#1f8a4c', '#f0a440', '#e5484d', '#8e4ec6'];
+    const confetti = reduce ? '' : Array.from({ length: 28 }, (_, i) => `<i style="left:${(i * 37) % 100}%;background:${COLORS[i % COLORS.length]};animation-delay:${(i % 7) * 0.08}s;animation-duration:${1.6 + (i % 5) * 0.25}s"></i>`).join('');
+    el.innerHTML = `<div class="confetti">${confetti}</div>
+      <div class="celebrate-card">
+        <div class="celebrate-icon">🏆</div>
+        <b>${esc(title)}</b>
+        ${lines.map((l) => `<p>${l}</p>`).join('')}
+        <span class="muted small">タップで閉じる</span>
+      </div>`;
+    el.addEventListener('click', () => el.remove());
+    document.body.appendChild(el);
+    fanfare();
+    vibrate([60, 40, 60]);
+    setTimeout(() => el.remove(), 4000);
+  }
 
   // サブ画面の見出し行（左上に「戻る」）と、一番下の「戻る」
   const sheetHead = (title) => `<div class="sheet-head"><button class="back-btn" data-sheet-back>‹ 戻る</button><h3>${title}</h3></div>`;
   const sheetFoot = (extra = '') => `<div class="row gap mt form-foot"><button class="btn ghost" data-sheet-back>‹ 戻る</button>${extra}</div>`;
 
-  return { sheetHead, sheetFoot, esc, dateStr, parseDate, fmtDate, fmtShort, fmtClock, num, uid, weekStart, sheet, closeSheet, toast, unlockAudio, beep, vibrate };
+  return { celebrate, fanfare, sheetHead, sheetFoot, esc, dateStr, parseDate, fmtDate, fmtShort, fmtClock, num, uid, weekStart, sheet, closeSheet, toast, unlockAudio, beep, vibrate };
 })();

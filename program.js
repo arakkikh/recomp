@@ -173,5 +173,62 @@ const Program = (() => {
     return { note: '', sets };
   }
 
-  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup };
+  // ---- 自己ベスト（PR）----
+  // 過去の記録（＋その日にすでに終えたセット）から、種目ごとの最高記録を出す
+  function bests(exId, extra = []) {
+    const b = { maxW: null, e1rm: null, repsAt: {}, maxReps: null };
+    const take = (s, date) => {
+      const w = s.weight || 0, r = s.reps || 0;
+      if (r <= 0) return;
+      if (!b.maxW || w > b.maxW.v) b.maxW = { v: w, reps: r, date };
+      const e = e1rm(w, r);
+      if (!b.e1rm || e > b.e1rm.v) b.e1rm = { v: e, w, r, date };
+      if (!b.repsAt[w] || r > b.repsAt[w].v) b.repsAt[w] = { v: r, date };
+      if (!b.maxReps || r > b.maxReps.v) b.maxReps = { v: r, w, date };
+    };
+    sessionsFor(exId).forEach(({ date, sets }) => sets.forEach((s) => take(s, date)));
+    extra.forEach((s) => take(s, UI.dateStr()));
+    return b;
+  }
+
+  // 今終えたセットが自己ベストか。初めての種目はお祝いしない（比べる記録がないため）
+  // 戻り値：[{ type, label, text }]
+  function checkPR(exId, set, extra = []) {
+    const ex = Exercises.byId[exId];
+    const b = bests(exId, extra);
+    if (!b.maxReps) return [];
+    const w = set.weight || 0, r = set.reps || 0;
+    if (r <= 0) return [];
+    const out = [];
+    const u = Exercises.UNIT_LABEL[ex.unit];
+    if (ex.unit === 'sec' || ex.unit === 'min') {
+      if (r > b.maxReps.v) out.push({ type: 'time', label: ex.unit === 'sec' ? '最長時間' : '最長時間', text: `${r}${u}（これまで ${b.maxReps.v}${u}）` });
+      return out;
+    }
+    if (ex.unit === 'kg') {
+      if (w > b.maxW.v) out.push({ type: 'weight', label: '最大重量', text: `${UI.num(w)}kg × ${r}回（これまで ${UI.num(b.maxW.v)}kg）` });
+      const e = e1rm(w, r);
+      if (e > b.e1rm.v + 0.05) out.push({ type: 'e1rm', label: '推定1RM', text: `${UI.num(Math.round(e * 10) / 10)}kg（これまで ${UI.num(Math.round(b.e1rm.v * 10) / 10)}kg）` });
+      if (b.repsAt[w] && r > b.repsAt[w].v) out.push({ type: 'reps', label: `${UI.num(w)}kgでの最多回数`, text: `${r}回（これまで ${b.repsAt[w].v}回）` });
+      return out;
+    }
+    // 自重（＋加重）
+    if (w > b.maxW.v) out.push({ type: 'weight', label: '最大加重', text: `+${UI.num(w)}kg × ${r}回（これまで ${b.maxW.v > 0 ? '+' + UI.num(b.maxW.v) + 'kg' : '自重のみ'}）` });
+    if (b.repsAt[w] && r > b.repsAt[w].v) out.push({ type: 'reps', label: w > 0 ? `+${UI.num(w)}kgでの最多回数` : '最多回数', text: `${r}回（これまで ${b.repsAt[w].v}回）` });
+    return out;
+  }
+
+  // 最近の自己ベスト（記録に残した🏆）を新しい順に
+  function recentPRs(limit = 10) {
+    const out = [];
+    const ws = Store.data.workouts;
+    for (let i = ws.length - 1; i >= 0 && out.length < limit; i--) {
+      ws[i].items.forEach((it) => it.sets.forEach((s) => {
+        if (s.pr && s.pr.length && out.length < limit) out.push({ date: ws[i].date, exId: it.exId, set: s });
+      }));
+    }
+    return out;
+  }
+
+  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup, bests, checkPR, recentPRs, e1rm };
 })();

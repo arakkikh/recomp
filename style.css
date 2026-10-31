@@ -438,3 +438,25 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; back
 .wu-gen-btn { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; border: 0; background: transparent; text-align: left; cursor: pointer; }
 .wu-gen-btn > span:last-child { display: flex; flex-direction: column; }
 .wu-general.done b { color: var(--muted); }
+
+/* ===== 自己ベスト（PR）===== */
+.pr-badge { margin-right: 4px; font-size: 15px; }
+.pr-card { margin: 10px 0 4px; padding: 8px 12px; border-radius: 12px; background: var(--warn-soft); }
+.pr-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.pr-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 14px; font-variant-numeric: tabular-nums; border-top: 1px solid color-mix(in srgb, var(--warn) 25%, transparent); }
+.pr-row:first-of-type { border-top: 0; }
+.pr-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.pr-list li { display: grid; grid-template-columns: 44px 1fr; column-gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.pr-list li > span:last-child { grid-column: 2; }
+.celebrate { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(0,0,0,.35); animation: cel-in .2s ease-out; }
+.celebrate-card { position: relative; z-index: 1; width: min(88vw, 360px); padding: 22px 18px 14px; border-radius: 20px; background: var(--card); text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.3); animation: cel-pop .35s cubic-bezier(.2,1.4,.4,1); }
+.celebrate-card b { display: block; font-size: 18px; line-height: 1.4; }
+.celebrate-card p { margin: 8px 0 0; font-size: 15px; }
+.celebrate-card p b { display: inline; font-size: 15px; color: var(--warn); }
+.celebrate-card .muted { display: block; margin-top: 12px; }
+.celebrate-icon { font-size: 48px; line-height: 1; margin-bottom: 6px; }
+.confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti i { position: absolute; top: -12px; width: 8px; height: 14px; border-radius: 2px; animation-name: cel-fall; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes cel-fall { to { transform: translateY(105vh) rotate(540deg); } }
+@keyframes cel-pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes cel-in { from { opacity: 0; } }
