@@ -206,7 +206,10 @@ const Body = (() => {
       <p class="hint">${imp ? '空欄の項目は記録しません。' : '薄い文字は前回の値です。空欄の項目は記録しません。'}</p>
       ${imp && opts.raw ? `<details class="raw"><summary class="muted small">読み取った文字を見る</summary><pre>${esc(opts.raw)}</pre></details>` : ''}
       <button class="btn primary big" data-b="save">保存</button>
-      <div class="row gap mt"><button class="btn ghost danger" data-b="delete" id="b-del" hidden>この日の記録を削除</button></div>`;
+      <div class="row gap mt form-foot">
+        <button class="btn ghost" data-b="back">‹ 戻る</button>
+        <button class="btn ghost danger" data-b="delete" id="b-del" hidden>この日の記録を削除</button>
+      </div>`;
 
     UI.sheet(html, (sh) => {
       const dateIn = sh.querySelector('#b-date');

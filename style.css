@@ -348,3 +348,9 @@ body:has(#restbar:not([hidden])) .bottom-cta { bottom: calc(var(--tab-h) + var(-
 textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); font: inherit; font-size: 16px; padding: 10px; resize: vertical; }
 /* 見出し行があるシートでは、つまみ（灰色の線）を出さず見出しを一番上に */
 .sheet-grip:has(+ .sheet-head) { display: none; }
+/* 入力画面の一番下：「戻る」と「削除」を横に並べる */
+.form-foot { flex-wrap: nowrap; }
+.form-foot .btn { flex: 1; min-height: 48px; }
+.form-foot .btn[hidden] { display: none; }
+/* hidden を指定した要素は、ボタンの表示設定より優先して必ず隠す */
+[hidden] { display: none !important; }
