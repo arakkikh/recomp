@@ -472,3 +472,8 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; back
 .mode-seg { margin: 10px 0 6px; }
 .mode-seg button { font-size: 13px; }
 h2 .tag { font-size: 12px; vertical-align: middle; }
+
+/* ===== デロード ===== */
+.card.deload { border: 1px solid var(--good); background: var(--good-soft); }
+.card.deload h3 small { font-weight: 400; font-size: 13px; }
+.card.deload p { margin: 6px 0 10px; }

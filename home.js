@@ -51,6 +51,11 @@ const Home = (() => {
       out.push({ icon: '🏋️', text: `筋トレ：${Program.DAYS[Program.nextDay()].name}`, sub: `今週 ${weekDone}/${target}回${trainedYesterday ? '（昨日もやったので、疲れていれば休養でもOK）' : ''}`, tab: 'workout', state: 'todo' });
     }
 
+    // 軽めの週（デロード）
+    const dl = Program.deloadState();
+    if (dl.current) out.push({ icon: '🌿', text: '軽めの週（デロード）中', sub: `〜${UI.fmtShort(dl.current.end)}。重量は約60%で余裕を残して`, tab: 'workout', state: 'doing' });
+    else if (!a && Program.deloadCheck().suggest) out.push({ icon: '🌿', text: '疲れがたまっているサイン', sub: '軽めの週（デロード）を検討しましょう', tab: 'workout', state: 'todo' });
+
     // 習慣
     const sc = Habits.score(today);
     out.push({ icon: '✅', text: `習慣チェック ${sc.done}/${sc.total}`, sub: sc.achieved ? '達成！' : `あと${sc.need - sc.done}つで達成`, tab: 'habits', state: sc.achieved ? 'done' : 'todo', habitsToday: true });

@@ -54,6 +54,7 @@ const Workout = (() => {
     }).join('');
     const minN = Program.estimateMin(dayKey, false), minS = Program.estimateMin(dayKey, true);
     return `
+      ${deloadCardHtml()}
       <div class="card">
         <div class="row between"><span class="muted">今週のトレーニング</span><b>${done} / ${target} 回</b></div>
         <div class="meter"><div style="width:${Math.min(100, (done / target) * 100)}%"></div></div>
@@ -76,10 +77,33 @@ const Workout = (() => {
       <div class="bottom-cta"><button class="btn primary big" data-act="start" data-day="${dayKey}">${shortMode ? '⏱ 短縮版で開始' : 'ワークアウト開始'}</button></div>`;
   }
 
+  // ---- デロード（軽めの週）のお知らせ ----
+  function deloadCardHtml() {
+    const dl = Program.deloadState();
+    if (dl.current) {
+      return `<div class="card deload on">
+        <h3>🌿 軽めの週（デロード）中 <small class="muted">〜${UI.fmtShort(dl.current.end)}</small></h3>
+        <p class="small">重量はいつもの約${Math.round(Program.DELOAD_RATIO * 100)}%、セットは1つ少なめ、きつさはRPE6くらい（まだ4回以上できる）で終えます。メニューは自動で軽くなっています。この週の記録は、次回の重量提案には使いません。</p>
+        <button class="btn small ghost" data-act="dlend">軽めの週を早めに終える</button>
+      </div>`;
+    }
+    const c = Program.deloadCheck();
+    if (!c.suggest) return '';
+    return `<div class="card deload">
+      <h3>🌿 疲れがたまっているサインがあります</h3>
+      <ul class="tips small">${c.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}${c.notes.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
+      <p class="small">1週間だけ軽め（重量約${Math.round(Program.DELOAD_RATIO * 100)}%・セット少なめ）にすると、疲れが抜けて翌週から記録が伸びやすくなります。筋肉は1週間で落ちることはありません。</p>
+      <div class="row gap">
+        <button class="btn small primary" data-act="dlstart">今週を軽めの週にする</button>
+        <button class="btn small ghost" data-act="dlsnooze">あと1週間続ける</button>
+      </div>
+    </div>`;
+  }
+
   // ---- 実施中 ----
   // 前回の同じ番号のセット（前回のほうがセット数が少なければ null）
   function prevSetOf(exId, j) {
-    const prev = Program.sessionsFor(exId)[0];
+    const prev = Program.sessionsFor(exId, true)[0];
     return prev && prev.sets[j] ? { ...prev.sets[j], date: prev.date } : null;
   }
   function prevText(ex, p) {
@@ -120,7 +144,7 @@ const Workout = (() => {
         }
       }
       mainGroups.forEach((g) => warmed.add(g)); // メインで使った部位だけ「温まった」とみなす
-      const prev = Program.sessionsFor(it.exId)[0];
+      const prev = Program.sessionsFor(it.exId, true)[0];
       const sets = it.sets.map((s, j) => `
         <li class="set ${s.done ? 'done' : ''}">
           <button class="set-main" data-act="edit" data-i="${i}" data-s="${j}" aria-label="セット${j + 1}を編集">
@@ -156,7 +180,7 @@ const Workout = (() => {
     }).join('');
     return `
       <div class="wk-head">
-        <div><h2>${esc(day ? day.name : 'ワークアウト')}${a.short ? ' <span class="tag">⏱ 短縮</span>' : ''}</h2><span class="muted">開始から <span id="elapsed">0:00</span></span></div>
+        <div><h2>${esc(day ? day.name : 'ワークアウト')}${a.short ? ' <span class="tag">⏱ 短縮</span>' : ''}${a.deload ? ' <span class="tag">🌿 軽め</span>' : ''}</h2><span class="muted">開始から <span id="elapsed">0:00</span></span></div>
         <button class="btn small ghost" data-act="cancel">中止</button>
       </div>
       <p class="hint">セットを終えたら ✓ をタップ → 休憩タイマーが始まります。数字をタップすると重量・回数・RPEを変更できます。</p>
@@ -186,7 +210,7 @@ const Workout = (() => {
       return `
         <details class="card hist">
           <summary>
-            <div><b>${UI.fmtDate(w.date)}</b> ${esc(Program.DAYS[w.dayKey]?.name || '')}${w.short ? ' <span class="tag">短縮</span>' : ''}</div>
+            <div><b>${UI.fmtDate(w.date)}</b> ${esc(Program.DAYS[w.dayKey]?.name || '')}${w.short ? ' <span class="tag">短縮</span>' : ''}${w.deload ? ' <span class="tag">軽め</span>' : ''}</div>
             <div class="muted small">${w.items.length}種目 · ${setsN}セット${min ? ` · ${min}分` : ''}${prN ? ` · 🏆${prN}` : ''}</div>
           </summary>
           <ul class="hist-list">${rows}</ul>
@@ -343,6 +367,9 @@ const Workout = (() => {
       case 'view': view = b.dataset.v; render(root); window.scrollTo(0, 0); break;
       case 'pick': pickedDay = b.dataset.day; render(root); break;
       case 'mode': shortMode = b.dataset.m === 'short'; render(root); break;
+      case 'dlstart': Program.startDeload(); UI.toast('今週は軽めの週にしました'); render(root); break;
+      case 'dlsnooze': Program.snoozeDeload(7); UI.toast('1週間後にもう一度確認します'); render(root); break;
+      case 'dlend': if (confirm('軽めの週を終えて、通常のメニューに戻しますか？')) { Program.endDeload(); render(root); } break;
       case 'start': start(b.dataset.day); break;
       case 'toggle': toggleSet(i, s); break;
       case 'wu': {
@@ -375,8 +402,20 @@ const Workout = (() => {
   function newItem(exId, short = false) {
     const ex = Exercises.byId[exId];
     const sug = Program.suggest(exId);
-    const n = short ? Program.SHORT_SETS : ex.sets;
-    const sets = Array.from({ length: n }, () => ({ weight: sug.weight || 0, reps: sug.reps, rpe: null, done: false }));
+    let n = short ? Program.SHORT_SETS : ex.sets;
+    let weight = sug.weight || 0;
+    let reps = sug.reps;
+    if (Program.inDeload() && ex.unit !== 'min') {
+      // 軽めの週：重量は約60%（刻みに合わせて切り下げ）、セットは1つ減らす（最低1）、回数は目標の下限
+      const inc = S().settings.dbIncrementKg;
+      if (ex.unit === 'kg') weight = Math.max(0, Math.floor((weight * Program.DELOAD_RATIO) / inc + 1e-9) * inc);
+      if (ex.unit === 'bw') weight = 0;
+      if (ex.unit !== 'sec') reps = ex.range[0];
+      n = Math.max(1, n - 1);
+      sug.kind = 'keep';
+      sug.text = `軽めの週：${ex.unit === 'kg' ? `${UI.num(weight)}kgで` : ''}${ex.unit === 'sec' ? '' : `${reps}回、`}余裕を残して終える（RPE6くらい）`;
+    }
+    const sets = Array.from({ length: n }, () => ({ weight, reps, rpe: null, done: false }));
     const item = { exId, sug, sets };
     if (short && ex.rest) item.rest = Math.min(ex.rest, Program.SHORT_REST);
     return item;
@@ -387,7 +426,7 @@ const Workout = (() => {
   function start(dayKey) {
     const day = Program.DAYS[dayKey];
     const ids = shortMode ? Program.shortItems(dayKey) : day.items;
-    S().active = { id: UI.uid(), dayKey, date: UI.dateStr(), startedAt: Date.now(), items: ids.map((id) => newItem(id, shortMode)), rest: null, ...(shortMode ? { short: true } : {}) };
+    S().active = { id: UI.uid(), dayKey, date: UI.dateStr(), startedAt: Date.now(), items: ids.map((id) => newItem(id, shortMode)), rest: null, ...(shortMode ? { short: true } : {}), ...(Program.inDeload() ? { deload: true } : {}) };
     pickedDay = null;
     shortMode = false;
     persist();
@@ -417,6 +456,7 @@ const Workout = (() => {
 
   // 今終えたセットが自己ベストなら、🏆を付けてお祝いする
   function markPR(it, set) {
+    if (active() && active().deload) { delete set.pr; return; }
     const others = it.sets.filter((x) => x !== set && x.done);
     const prs = Program.checkPR(it.exId, set, others);
     if (!prs.length) { delete set.pr; return; }
@@ -577,7 +617,7 @@ const Workout = (() => {
     }
     const undone = a.items.reduce((n, it) => n + it.sets.filter((s) => !s.done).length, 0);
     if (undone && !confirm(`未完了のセットが${undone}つあります。完了したセットだけ記録して終了しますか？`)) return;
-    S().workouts.push({ id: a.id, date: a.date, dayKey: a.dayKey, startedAt: a.startedAt, finishedAt: Date.now(), items, ...(a.short ? { short: true } : {}) });
+    S().workouts.push({ id: a.id, date: a.date, dayKey: a.dayKey, startedAt: a.startedAt, finishedAt: Date.now(), items, ...(a.short ? { short: true } : {}), ...(a.deload ? { deload: true } : {}) });
     endActive();
     const sets = items.reduce((n, it) => n + it.sets.length, 0);
     const prN = items.reduce((n, it) => n + it.sets.filter((s) => s.pr).length, 0);

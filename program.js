@@ -23,10 +23,12 @@ const Program = (() => {
   }
 
   // 種目の過去記録（新しい順）[{date, sets}]
-  function sessionsFor(exId) {
+  // skipDeload=true なら、デロード週（軽めの週）の記録を除く（次回の重量提案や「前回」の表示用）
+  function sessionsFor(exId, skipDeload = false) {
     const out = [];
     const ws = Store.data.workouts;
     for (let i = ws.length - 1; i >= 0; i--) {
+      if (skipDeload && ws[i].deload) continue;
       const item = ws[i].items.find((it) => it.exId === exId && it.sets.length);
       if (item) out.push({ date: ws[i].date, sets: item.sets });
     }
@@ -40,7 +42,7 @@ const Program = (() => {
     const ex = Exercises.byId[exId];
     const { dbIncrementKg: inc, dbMaxKg } = Store.data.settings;
     const [min, max] = ex.range;
-    const hist = sessionsFor(exId);
+    const hist = sessionsFor(exId, true);
 
     if (!hist.length) {
       const text = ex.unit === 'kg'
@@ -260,5 +262,95 @@ const Program = (() => {
     return Math.round(sec / 60 / 5) * 5;
   }
 
-  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup, bests, checkPR, recentPRs, e1rm, shortItems, estimateMin, SHORT_SETS, SHORT_REST };
+  // ---- デロード（軽めの週）----
+  const DELOAD_WEEKS = 8;     // これだけ続けたら一度軽めの週を
+  const DELOAD_RATIO = 0.6;   // 重量の目安（いつもの約60%）
+  const addDaysStr = (s, n) => { const d = UI.parseDate(s); d.setDate(d.getDate() + n); return UI.dateStr(d); };
+
+  function deloadState() {
+    const dl = Store.data.deload;
+    const today = UI.dateStr();
+    if (dl.current && today > dl.current.end) { dl.history.push(dl.current); dl.current = null; Store.save(); }
+    return dl;
+  }
+  const inDeload = () => !!deloadState().current;
+
+  // 疲れのサインを調べる → { suggest, reasons:[], weeks }
+  function deloadCheck() {
+    const dl = deloadState();
+    const today = UI.dateStr();
+    const ws = Store.data.workouts.filter((w) => !w.deload);
+    const res = { suggest: false, reasons: [], notes: [], weeks: 0 };
+    if (dl.current || !ws.length) return res;
+    if (dl.snoozeUntil && today < dl.snoozeUntil) return res;
+
+    // ① 続けている週数（週2回以上やった週が途切れずに続いた数。最後のデロード以降）
+    const lastEnd = dl.history.length ? dl.history[dl.history.length - 1].end : '0000-00-00';
+    let wk = UI.weekStart();
+    // 今週がまだ2回未満なら先週から数える
+    const countIn = (start) => { const s = UI.dateStr(start), e = addDaysStr(s, 6); return ws.filter((w) => w.date >= s && w.date <= e && w.date > lastEnd).length; };
+    if (countIn(wk) < 2) wk.setDate(wk.getDate() - 7);
+    let weeks = 0;
+    while (weeks < 60 && countIn(wk) >= 2) { weeks++; wk.setDate(wk.getDate() - 7); }
+    res.weeks = weeks;
+    if (weeks >= DELOAD_WEEKS) res.reasons.push(`${weeks}週続けてトレーニングしています（${DELOAD_WEEKS}週ごとに軽めの週を入れると、疲れが抜けて伸びやすくなります）`);
+
+    // ② きつさ：直近14日のセットのRPE
+    const from14 = addDaysStr(today, -13);
+    const rpes = ws.filter((w) => w.date >= from14).flatMap((w) => w.items.flatMap((it) => it.sets.map((s) => s.rpe).filter(Boolean)));
+    if (rpes.length >= 10) {
+      const avg = rpes.reduce((a, b) => a + b, 0) / rpes.length;
+      const hard = rpes.filter((r) => r >= 9.5).length / rpes.length;
+      if (avg >= 9 || hard >= 0.3) res.reasons.push(`この2週間、きつさが高めです（平均RPE ${avg.toFixed(1)}、限界に近いセットが${Math.round(hard * 100)}%）`);
+    }
+
+    // ③ 伸び悩み：直近14日の推定1RM（自重は回数）が、その前の14日を超えていない種目
+    const from28 = addDaysStr(today, -27);
+    let checked = 0, stalled = 0;
+    Exercises.list.forEach((ex) => {
+      if (ex.unit === 'sec' || ex.unit === 'min') return;
+      const ss = sessionsFor(ex.id, true);
+      const score = (arr) => Math.max(...arr.flatMap((x) => x.sets.map((s) => (ex.unit === 'kg' ? e1rm(s.weight || 0, s.reps) : s.reps + (s.weight || 0)))));
+      const recent = ss.filter((x) => x.date >= from14);
+      const before = ss.filter((x) => x.date >= from28 && x.date < from14);
+      if (recent.length < 2 || before.length < 1) return;
+      checked++;
+      if (score(recent) <= score(before)) stalled++;
+    });
+    if (checked >= 3 && stalled / checked >= 0.5) res.reasons.push(`${checked}種目中${stalled}種目で、この2週間 記録が伸びていません`);
+
+    // 補足：睡眠（習慣タブの記録）
+    const sl = [];
+    for (let i = 0; i < 7; i++) {
+      const h = Store.data.habits[addDaysStr(today, -i)];
+      if (h && h.bed && h.wake) { let d = (+h.wake.slice(0, 2) * 60 + +h.wake.slice(3)) - (+h.bed.slice(0, 2) * 60 + +h.bed.slice(3)); if (d <= 0) d += 1440; sl.push(d / 60); }
+    }
+    if (sl.length >= 4) {
+      const avg = sl.reduce((a, b) => a + b, 0) / sl.length;
+      if (avg < 6) res.notes.push(`この1週間の平均睡眠が${avg.toFixed(1)}時間と短めです`);
+    }
+
+    res.suggest = res.reasons.length > 0;
+    return res;
+  }
+
+  function startDeload() {
+    const dl = deloadState();
+    const s = UI.dateStr();
+    dl.current = { start: s, end: addDaysStr(s, 6) };
+    dl.snoozeUntil = null;
+    Store.save();
+  }
+  function endDeload() {
+    const dl = deloadState();
+    if (!dl.current) return;
+    dl.current.end = UI.dateStr();
+    dl.history.push(dl.current);
+    dl.current = null;
+    Store.save();
+  }
+  function snoozeDeload(days = 7) { deloadState().snoozeUntil = addDaysStr(UI.dateStr(), days); Store.save(); }
+
+  return { DELOAD_RATIO, deloadState, inDeload, deloadCheck, startDeload, endDeload, snoozeDeload,
+    DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup, bests, checkPR, recentPRs, e1rm, shortItems, estimateMin, SHORT_SETS, SHORT_REST };
 })();

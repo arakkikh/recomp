@@ -12,6 +12,7 @@ const Store = (() => {
     active: null, // 実施中のワークアウト
     body: [],     // 体組成（段階②）
     habits: {},   // 習慣（段階③）
+    deload: { current: null, history: [], snoozeUntil: null }, // 軽めの週
   });
 
   let data = defaults();
@@ -27,6 +28,7 @@ const Store = (() => {
       workouts: Array.isArray(d.workouts) ? d.workouts : [],
       body: Array.isArray(d.body) ? d.body : [],
       habits: d.habits && typeof d.habits === 'object' ? d.habits : {},
+      deload: { ...base.deload, ...(d.deload || {}), history: (d.deload && Array.isArray(d.deload.history)) ? d.deload.history : [] },
       version: VERSION,
     };
   }
