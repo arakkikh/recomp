@@ -146,5 +146,32 @@ const Program = (() => {
     return out;
   }
 
-  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets };
+  // ウォームアップの提案。w=その日の1セット目の重量（片手kg）
+  // 大きい種目（休憩90秒以上）は 50%×10 → 70〜75%×5 →（20kg以上なら）85%×3、
+  // 小さい種目は 50%×12 を1セット。自重種目は軽い準備運動の説明だけ。
+  const BW_WARMUP = {
+    pullup: 'バーにぶら下がって10秒 ＋ ぶら下がったまま肩甲骨を下げる動きを5回',
+    chinup: 'バーにぶら下がって10秒 ＋ ぶら下がったまま肩甲骨を下げる動きを5回',
+    dips: 'バーの上で腕を伸ばして体を支える10秒 ＋ 浅めのディップスを5回',
+  };
+  function warmup(exId, w) {
+    const ex = Exercises.byId[exId];
+    if (!ex) return null;
+    if (ex.unit === 'bw') return BW_WARMUP[exId] ? { note: BW_WARMUP[exId], sets: [] } : null;
+    if (ex.unit !== 'kg') return null;
+    const inc = Store.data.settings.dbIncrementKg;
+    if (!w || w <= inc * 2) return { note: '', sets: [{ w: 0, reps: 10, text: 'ダンベルなしで10回（動きの確認）' }] };
+    const compound = (ex.rest || 0) >= 90;
+    const plan = compound ? (w >= 20 ? [[0.5, 10], [0.7, 5], [0.85, 3]] : [[0.5, 10], [0.75, 5]]) : [[0.5, 12]];
+    const round = (x) => Math.max(inc, Math.floor(x / inc + 1e-9) * inc); // 安全のため軽い方へ切り下げ
+    const sets = [];
+    plan.forEach(([p, reps]) => {
+      const ww = round(w * p);
+      if (ww >= w || sets.some((s) => s.w === ww)) return;
+      sets.push({ w: ww, reps, text: `${UI.num(ww)}kg × ${reps}回` });
+    });
+    return { note: '', sets };
+  }
+
+  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup };
 })();

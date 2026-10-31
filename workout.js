@@ -77,8 +77,24 @@ const Workout = (() => {
   function activeHtml() {
     const a = active();
     const day = Program.DAYS[a.dayKey];
+    const showWu = S().settings.showWarmup !== false;
+    const warmed = new Set(); // その日すでに温まっている部位
     const cards = a.items.map((it, i) => {
       const ex = Exercises.byId[it.exId];
+      let wuHtml = '';
+      const mainGroups = Object.keys(ex.work).filter((k) => ex.work[k] >= 1);
+      if (showWu && mainGroups.some((g) => !warmed.has(g))) {
+        const wu = Program.warmup(ex.id, (it.sets[0] || {}).weight);
+        if (wu && (wu.sets.length || wu.note)) {
+          const done = it.wu || [];
+          wuHtml = `<div class="wu">
+            <div class="wu-head">🔥 ウォームアップ <small class="muted">記録・セット数には入りません</small></div>
+            ${wu.note ? `<p class="small wu-note">${esc(wu.note)}</p>` : ''}
+            ${wu.sets.length ? `<div class="wu-sets">${wu.sets.map((w, k) => `<button class="wu-chip ${done[k] ? 'done' : ''}" data-act="wu" data-i="${i}" data-s="${k}">${done[k] ? '✓ ' : ''}${esc(w.text)}</button>`).join('<span class="wu-arrow">→</span>')}</div>` : ''}
+          </div>`;
+        }
+      }
+      mainGroups.forEach((g) => warmed.add(g)); // メインで使った部位だけ「温まった」とみなす
       const prev = Program.sessionsFor(it.exId)[0];
       const sets = it.sets.map((s, j) => `
         <li class="set ${s.done ? 'done' : ''}">
@@ -102,6 +118,7 @@ const Workout = (() => {
           </div>
           <div class="prev">${prev ? `前回 ${UI.fmtShort(prev.date)}：${esc(Program.fmtSets(ex.id, prev.sets))}` : '前回の記録なし'}</div>
           <div class="sug sug-${it.sug.kind}">${{ up: '⬆', down: '⬇', keep: '→', first: '★', max: '★' }[it.sug.kind]} ${esc(it.sug.text)}</div>
+          ${wuHtml}
           <ol class="sets">${sets}</ol>
           <div class="row gap">
             <button class="btn small" data-act="addset" data-i="${i}">＋セット</button>
@@ -115,6 +132,12 @@ const Workout = (() => {
         <button class="btn small ghost" data-act="cancel">中止</button>
       </div>
       <p class="hint">セットを終えたら ✓ をタップ → 休憩タイマーが始まります。数字をタップすると重量・回数・RPEを変更できます。</p>
+      ${S().settings.showWarmup !== false ? `<div class="card wu-general ${a.gwu ? 'done' : ''}">
+        <button class="wu-gen-btn" data-act="gwu">
+          <span class="ok-mark ${a.gwu ? 'yes' : 'none'}">${a.gwu ? '✓' : '−'}</span>
+          <span><b>はじめに体を温める（約5分）</b><span class="muted small">ステッパー3分 → 肩回し・股関節回し・腕振りを各10回</span></span>
+        </button>
+      </div>` : ''}
       ${cards}
       <button class="btn block" data-act="addex">＋ 種目を追加</button>
       <div class="bottom-cta"><button class="btn primary big" data-act="finish">ワークアウト完了</button></div>`;
@@ -257,6 +280,15 @@ const Workout = (() => {
       case 'pick': pickedDay = b.dataset.day; render(root); break;
       case 'start': start(b.dataset.day); break;
       case 'toggle': toggleSet(i, s); break;
+      case 'wu': {
+        const it = active().items[i];
+        it.wu = it.wu || [];
+        it.wu[s] = !it.wu[s];
+        if (it.wu[s]) Rest.start(45); // ウォームアップ後は短めの休憩
+        persist();
+        break;
+      }
+      case 'gwu': active().gwu = !active().gwu; persist(); break;
       case 'edit': editSet(i, s); break;
       case 'addset': addSet(i); break;
       case 'delset': active().items[i].sets.pop(); persist(); break;

@@ -6,7 +6,7 @@ const Store = (() => {
   const defaults = () => ({
     version: VERSION,
     profile: { sex: null, birthYear: null, heightCm: null, activityFactor: 1.5 },
-    settings: { daysPerWeek: 4, dbIncrementKg: 2.5, dbMaxKg: 40, restSec: 90, goalFatPct: 20, goalVisceral: 9.5, goalMuscleKg: null, goalWeight: null, theme: 'auto', lastBackup: null,
+    settings: { daysPerWeek: 4, dbIncrementKg: 2.5, dbMaxKg: 40, restSec: 90, showWarmup: true, goalFatPct: 20, goalVisceral: 9.5, goalMuscleKg: null, goalWeight: null, theme: 'auto', lastBackup: null,
       proteinPerKg: 1.8, targetBed: '23:30', targetWake: '06:30', sleepGoalH: 7, vegGoal: 5, stepsGoal: 8000, stepperGoalMin: 20, alcoholCheck: false },
     workouts: [], // 完了したワークアウト
     active: null, // 実施中のワークアウト

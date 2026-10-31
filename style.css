@@ -424,3 +424,17 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; back
 .bal-st.ok { color: var(--good); }
 .bal-st.low { color: var(--warn); }
 .bal-st.high { color: var(--muted); }
+
+/* ===== ウォームアップ ===== */
+.wu { margin-top: 8px; padding: 8px 10px; border-radius: 10px; border: 1px dashed var(--line); }
+.wu-head { font-size: 13px; font-weight: 700; }
+.wu-head small { font-weight: 400; margin-left: 4px; }
+.wu-note { margin: 4px 0 0; }
+.wu-sets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.wu-chip { min-height: 38px; padding: 0 12px; border-radius: 19px; border: 1px solid var(--line); background: var(--card); font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.wu-chip.done { background: var(--good-soft); border-color: var(--good); color: var(--good); font-weight: 600; }
+.wu-arrow { color: var(--muted); font-size: 12px; }
+.wu-general { padding: 4px 10px; }
+.wu-gen-btn { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.wu-gen-btn > span:last-child { display: flex; flex-direction: column; }
+.wu-general.done b { color: var(--muted); }

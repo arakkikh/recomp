@@ -55,6 +55,8 @@ const Settings = {
           <select data-k="dbMaxKg">${[20, 24, 30, 32, 40, 50].map((v) => opt(v, st.dbMaxKg, v + ' kg')).join('')}</select></label>
         <label class="field"><span>標準の休憩時間</span>
           <select data-k="restSec">${[60, 90, 120, 150, 180].map((v) => opt(v, st.restSec, v + ' 秒')).join('')}</select></label>
+        <label class="field"><span>ウォームアップの提案</span>
+          <select data-k="showWarmup" data-type="bool">${opt('true', String(st.showWarmup !== false), '表示する')}${opt('false', String(st.showWarmup !== false), '表示しない')}</select></label>
         <p class="hint">種目ごとに推奨の休憩時間（大きい種目は120秒など）があるときは、そちらを優先します。</p>
       </div>
       <div class="card">
