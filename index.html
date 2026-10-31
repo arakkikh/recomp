@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Recomp">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <title>Recomp</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar"><h1 id="title">Recomp</h1></header>
+
+  <main id="main"></main>
+
+  <!-- 休憩タイマー（どの画面でも表示） -->
+  <div id="restbar" hidden>
+    <div class="rest-fill"></div>
+    <span class="rest-time">休憩 0:00</span>
+    <div class="rest-btns">
+      <button data-rest="-15" aria-label="15秒減らす">−15</button>
+      <button data-rest="30" aria-label="30秒増やす">+30</button>
+      <button data-rest="stop" aria-label="タイマーを止める">✕</button>
+    </div>
+  </div>
+
+  <nav class="tabbar">
+    <button data-tab="home"><span class="ti">🏠</span>ホーム</button>
+    <button data-tab="workout"><span class="ti">🏋️</span>筋トレ</button>
+    <button data-tab="body"><span class="ti">📊</span>体組成</button>
+    <button data-tab="habits"><span class="ti">🥗</span>習慣</button>
+    <button data-tab="settings"><span class="ti">⚙️</span>設定</button>
+  </nav>
+
+  <script src="js/ui.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/exercises.js"></script>
+  <script src="js/program.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/workout.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
