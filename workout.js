@@ -268,17 +268,14 @@ const Workout = (() => {
         <button class="btn step" data-k="${key}" data-d="${step}" aria-label="増やす">＋</button>
       </div>`;
     const html = `
-      <h3>${esc(ex.name)} — セット${s + 1}</h3>
+      ${UI.sheetHead(`${esc(ex.name)} — セット${s + 1}`)}
       ${timeUnit ? '' : stepper('weight', ex.unit === 'bw' ? '加重（kg、自重のみなら0）' : `重量（片手 kg）${ex.note && ex.note.includes('1個') ? ' ※ダンベル1個' : ''}`, inc, set.weight || 0, 'decimal')}
       ${stepper('reps', timeUnit ? `時間（${U[ex.unit]}）` : '回数', repStep, set.reps, 'numeric')}
       <label class="field-label">RPE（きつさ）</label>
       <div class="chips rpe">${RPES.map((r) => `<button class="chip ${set.rpe === r ? 'on' : ''}" data-rpe="${r}">${r}</button>`).join('')}</div>
       <p class="hint">7＝あと3回できる / 8＝あと2回 / 9＝あと1回 / 10＝限界</p>
       <button class="btn primary big" data-save="done">${set.done ? '保存' : '記録して休憩開始'}</button>
-      <div class="row gap mt">
-        ${set.done ? '<button class="btn ghost" data-save="undone">未完了に戻す</button>' : ''}
-        <button class="btn ghost danger" data-save="delete">このセットを削除</button>
-      </div>`;
+      ${UI.sheetFoot(`${set.done ? '<button class="btn ghost" data-save="undone">未完了に戻す</button>' : ''}<button class="btn ghost danger" data-save="delete">セットを削除</button>`)}`;
     UI.sheet(html, (sh) => {
       const read = (k) => { const v = parseFloat((sh.querySelector(`#in-${k}`)?.value || '').replace(',', '.')); return Number.isFinite(v) ? v : 0; };
       sh.addEventListener('click', (e) => {
@@ -320,7 +317,7 @@ const Workout = (() => {
     const ex = Exercises.byId[exId];
     const inActive = itemIndex !== null && active() && view === 'today';
     const html = `
-      <h3>${esc(ex.name)}</h3>
+      ${UI.sheetHead(esc(ex.name))}
       <div class="chips static">
         ${ex.primary.map((m) => `<span class="chip on">${esc(m)}</span>`).join('')}
         ${ex.secondary.map((m) => `<span class="chip">${esc(m)}</span>`).join('')}
@@ -334,17 +331,17 @@ const Workout = (() => {
       ${ex.progression ? `<h4>慣れたら</h4><p>${esc(ex.progression)}</p>` : ''}
       ${ex.note ? `<p class="hint">※ ${esc(ex.note)}</p>` : ''}
       ${inActive ? '<button class="btn ghost danger block mt" data-rm="1">この種目を今日のメニューから外す</button>' : ''}
-      <button class="btn block mt" data-close="1">閉じる</button>`;
+      ${UI.sheetFoot()}`;
     UI.sheet(html, (sh) => sh.addEventListener('click', (e) => {
-      if (e.target.closest('[data-close]')) UI.closeSheet();
       if (e.target.closest('[data-rm]')) { active().items.splice(itemIndex, 1); UI.closeSheet(); persist(); }
     }));
   }
 
   // ---- 種目追加シート ----
   function pickExercise() {
-    const html = `<h3>種目を追加</h3>${Exercises.PARTS.map((p) => `
-      <h4>${p}</h4><ul class="list">${Exercises.list.filter((e) => e.part === p).map((e) => `<li><button class="list-btn" data-add="${e.id}"><span>${esc(e.name)}</span><span>＋</span></button></li>`).join('')}</ul>`).join('')}`;
+    const html = `${UI.sheetHead('種目を追加')}${Exercises.PARTS.map((p) => `
+      <h4>${p}</h4><ul class="list">${Exercises.list.filter((e) => e.part === p).map((e) => `<li><button class="list-btn" data-add="${e.id}"><span>${esc(e.name)}</span><span>＋</span></button></li>`).join('')}</ul>`).join('')}
+      ${UI.sheetFoot()}`;
     UI.sheet(html, (sh) => sh.addEventListener('click', (e) => {
       const b = e.target.closest('[data-add]');
       if (!b) return;

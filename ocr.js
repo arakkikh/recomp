@@ -279,7 +279,8 @@ const BodyImport = (() => {
         </ol>
         <textarea id="ocr-paste" rows="5" placeholder="ここに貼り付け"></textarea>
         <button class="btn block mt" data-x="paste">貼り付けた文字を読み取る</button>
-      </div>`;
+      </div>
+      ${UI.sheetFoot()}`;
     UI.sheet(html, (sh) => {
       sh.querySelector('#ocr-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) runImage(f); });
       sh.addEventListener('click', (e) => {

@@ -45,7 +45,9 @@ const UI = (() => {
     sheetEl = document.createElement('div');
     sheetEl.className = 'sheet-overlay';
     sheetEl.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div>${html}</div>`;
-    sheetEl.addEventListener('click', (e) => { if (e.target === sheetEl) closeSheet(); });
+    sheetEl.addEventListener('click', (e) => {
+      if (e.target === sheetEl || e.target.closest('[data-sheet-back]')) closeSheet();
+    });
     document.body.appendChild(sheetEl);
     document.body.classList.add('no-scroll');
     fitViewport();
@@ -98,5 +100,9 @@ const UI = (() => {
   }
   const vibrate = (p) => { if (navigator.vibrate) navigator.vibrate(p); };
 
-  return { esc, dateStr, parseDate, fmtDate, fmtShort, fmtClock, num, uid, weekStart, sheet, closeSheet, toast, unlockAudio, beep, vibrate };
+  // サブ画面の見出し行（左上に「戻る」）と、一番下の「戻る」
+  const sheetHead = (title) => `<div class="sheet-head"><button class="back-btn" data-sheet-back>‹ 戻る</button><h3>${title}</h3></div>`;
+  const sheetFoot = (extra = '') => `<div class="row gap mt form-foot"><button class="btn ghost" data-sheet-back>‹ 戻る</button>${extra}</div>`;
+
+  return { sheetHead, sheetFoot, esc, dateStr, parseDate, fmtDate, fmtShort, fmtClock, num, uid, weekStart, sheet, closeSheet, toast, unlockAudio, beep, vibrate };
 })();
