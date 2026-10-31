@@ -38,6 +38,8 @@ const Chart = (() => {
     if (x0 === x1) { x0 -= 3 * 864e5; x1 += 3 * 864e5; }
     const ys = points.map((p) => p.y);
     let yMin = Math.min(...ys), yMax = Math.max(...ys);
+    // 目標線・基準線（opt.ref）も表示範囲に含める
+    if (opt.ref && Number.isFinite(opt.ref.y)) { yMin = Math.min(yMin, opt.ref.y); yMax = Math.max(yMax, opt.ref.y); }
     const pad = (yMax - yMin) * 0.15 || Math.max(1, Math.abs(yMax) * 0.1);
     const ticks = niceTicks(opt.zero ? 0 : yMin - pad, yMax + pad);
     const ty0 = ticks[0], ty1 = ticks[ticks.length - 1];
@@ -60,7 +62,7 @@ const Chart = (() => {
     // グリッドとY軸ラベル
     for (const v of ticks) {
       add('line', { x1: m.l, x2: W - m.r, y1: sy(v), y2: sy(v), class: 'grid' });
-      add('text', { x: m.l - 6, y: sy(v) + 4, class: 'axis', 'text-anchor': 'end' }).textContent = fmt(v);
+      add('text', { x: m.l - 6, y: sy(v) + 4, class: 'axis', 'text-anchor': 'end' }).textContent = UI.num(v);
     }
     // X軸ラベル（最大5つ）
     const nx = Math.min(5, points.length);
@@ -71,6 +73,12 @@ const Chart = (() => {
       used.add(idx);
       const anchor = idx === 0 && points.length > 1 ? 'start' : idx === points.length - 1 && points.length > 1 ? 'end' : 'middle';
       add('text', { x: sx(xs[idx]), y: H - 8, class: 'axis', 'text-anchor': anchor }).textContent = UI.fmtShort(points[idx].x);
+    }
+
+    // 目標線・基準線
+    if (opt.ref && Number.isFinite(opt.ref.y)) {
+      add('line', { x1: m.l, x2: W - m.r, y1: sy(opt.ref.y), y2: sy(opt.ref.y), class: 'ref-line' });
+      add('text', { x: m.l + 4, y: sy(opt.ref.y) - 5, class: 'ref-label' }).textContent = `${opt.ref.label} ${fmt(opt.ref.y)}${unit}`;
     }
 
     // 線と点
