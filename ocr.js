@@ -315,7 +315,8 @@ const BodyImport = (() => {
       const canvas = preprocess(img);
       if (img.close) img.close();
       const text = await recognize(canvas, setP);
-      if (cancelled) return;
+      // 途中で「戻る」やスワイプで読み取り画面を離れていたら、結果は出さない
+      if (cancelled || !document.getElementById('ocr-status')) return;
       const r = parse(text);
       if (Object.keys(r.values).length === 0) {
         failed('数値を読み取れませんでした。測定結果の数字がはっきり写った画面か確認するか、下の「文字の貼り付け」を使ってください。', text);
@@ -340,7 +341,7 @@ const BodyImport = (() => {
         const b = e.target.closest('[data-x]');
         if (!b) return;
         if (b.dataset.x === 'back') open();
-        if (b.dataset.x === 'manual') Body.openForm(UI.dateStr());
+        if (b.dataset.x === 'manual') Body.openForm(UI.dateStr(), { onBack: open });
       });
     });
   }

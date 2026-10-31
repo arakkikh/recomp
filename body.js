@@ -167,7 +167,7 @@ const Body = (() => {
     switch (b.dataset.act) {
       case 'add': openForm(UI.dateStr()); break;
       case 'scan': BodyImport.open(); break;
-      case 'edit': openForm(b.dataset.date); break;
+      case 'edit': openForm(b.dataset.date, { edit: true }); break;
       case 'metric': metric = b.dataset.k; render(root); break;
       case 'range': range = b.dataset.r; render(root); break;
     }
@@ -194,7 +194,7 @@ const Body = (() => {
     const head = imp
       ? `<div class="sheet-head"><button class="back-btn" data-b="back">‹ 戻る</button><h3>読み取り結果の確認</h3></div>
          <p class="hint">${opts.source === 'paste' ? '貼り付けた文字' : '写真'}から読み取った値です。<b>必ず元の画面と見比べて</b>、違う値は直してから保存してください。${missing.size ? `<br><span class="flag miss">読み取れず</span> の項目は空欄です。` : ''}${uncertain.size ? ` <span class="flag unsure">要確認</span> は自信が低い値です。` : ''}</p>`
-      : '<h3>測定結果を記録</h3>';
+      : `<div class="sheet-head"><button class="back-btn" data-b="back">‹ 戻る</button><h3>${opts.edit ? '記録の確認・修正' : '測定結果を記録'}</h3></div>`;
     const html = `
       ${head}
       <div class="time-row">

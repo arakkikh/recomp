@@ -17,9 +17,20 @@ const UI = (() => {
   const weekStart = (d = new Date()) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 
   // ---- ボトムシート ----
+  // 開くときに履歴を1つ積むので、ブラウザの「戻る」やiPhoneの左端スワイプでも
+  // アプリを離れずにサブ画面だけが閉じる
   let sheetEl = null;
+  let pushed = false;   // 履歴を積んでいるか
+  let ignorePops = 0;   // 自分で history.back() した分の popstate は無視する
+  function removeSheet() {
+    if (!sheetEl) return;
+    sheetEl.remove();
+    sheetEl = null;
+    document.body.classList.remove('no-scroll');
+  }
   function sheet(html, onMount) {
-    closeSheet();
+    removeSheet();
+    if (!pushed) { history.pushState({ sheet: 1 }, ''); pushed = true; }
     sheetEl = document.createElement('div');
     sheetEl.className = 'sheet-overlay';
     sheetEl.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-grip"></div>${html}</div>`;
@@ -31,11 +42,14 @@ const UI = (() => {
     return sheetEl;
   }
   function closeSheet() {
-    if (!sheetEl) return;
-    sheetEl.remove();
-    sheetEl = null;
-    document.body.classList.remove('no-scroll');
+    removeSheet();
+    if (pushed) { pushed = false; ignorePops++; history.back(); }
   }
+  window.addEventListener('popstate', () => {
+    if (ignorePops > 0) { ignorePops--; return; }
+    if (sheetEl) { pushed = false; removeSheet(); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetEl) closeSheet(); });
 
   // ---- トースト ----
   let toastTimer;
