@@ -91,11 +91,12 @@ const Workout = (() => {
       return `
         <section class="card ex ${doneN && doneN === it.sets.length ? 'ex-done' : ''}">
           <div class="ex-head">
-            <div>
+            <button class="fig-thumb" data-act="info" data-ex="${ex.id}" data-i="${i}" aria-label="${esc(ex.name)}の動きとフォームを見る">${Figures.svg(ex.id, 1)}<span class="fig-play">▶</span></button>
+            <div class="ex-title">
               <h3>${esc(ex.name)}${ex.perSide ? ' <small class="muted">片側ずつ</small>' : ''}</h3>
               <div class="muscles">${ex.primary.map(esc).join('・')}${ex.secondary.length ? ` <span class="muted">/ ${ex.secondary.map(esc).join('・')}</span>` : ''}</div>
+              <button class="link-btn" data-act="info" data-ex="${ex.id}" data-i="${i}">動きとフォームを見る ›</button>
             </div>
-            <button class="icon-btn" data-act="info" data-ex="${ex.id}" data-i="${i}" aria-label="フォームの要点">ⓘ</button>
           </div>
           <div class="prev">${prev ? `前回 ${UI.fmtShort(prev.date)}：${esc(Program.fmtSets(ex.id, prev.sets))}` : '前回の記録なし'}</div>
           <div class="sug sug-${it.sug.kind}">${{ up: '⬆', down: '⬇', keep: '→', first: '★', max: '★' }[it.sug.kind]} ${esc(it.sug.text)}</div>
@@ -183,7 +184,7 @@ const Workout = (() => {
   function libraryHtml() {
     return Exercises.PARTS.map((p) => {
       const items = Exercises.list.filter((e) => e.part === p).map((e) => `
-        <li><button class="list-btn" data-act="info" data-ex="${e.id}"><span>${esc(e.name)}</span><span class="muted small">${e.primary.map(esc).join('・')} ›</span></button></li>`).join('');
+        <li><button class="list-btn lib-item" data-act="info" data-ex="${e.id}"><span class="fig-thumb sm">${Figures.svg(e.id, 1)}</span><span class="lib-name">${esc(e.name)}<small class="muted">${e.primary.map(esc).join('・')}</small></span><span class="muted">›</span></button></li>`).join('');
       return `<div class="card"><h3>${p}</h3><ul class="list">${items}</ul></div>`;
     }).join('');
   }
@@ -312,29 +313,57 @@ const Workout = (() => {
     });
   }
 
-  // ---- 種目情報シート ----
+  // ---- 種目情報シート（動きの図・効く部位・フォーム・YouTube）----
   function showInfo(exId, itemIndex) {
     const ex = Exercises.byId[exId];
     const inActive = itemIndex !== null && active() && view === 'today';
+    const q = encodeURIComponent(`${ex.name.replace(/（.*?）/g, '')} やり方 フォーム`);
+    const cap = Figures.caption(exId);
     const html = `
       ${UI.sheetHead(esc(ex.name))}
+      <div class="fig-wrap">
+        <div class="fig-stage" id="fig-stage"></div>
+        <div class="fig-ctrl">
+          <button class="chip" data-fig="0">始めの姿勢</button>
+          <button class="chip" data-fig="toggle" id="fig-toggle">⏸ 一時停止</button>
+          <button class="chip" data-fig="1">終わりの姿勢</button>
+        </div>
+        <p class="hint center">${cap ? esc(cap) + '<br>' : ''}<span class="fig-key"></span> 色の部分＝主に効く部位</p>
+      </div>
+
+      <h4>効く部位</h4>
       <div class="chips static">
         ${ex.primary.map((m) => `<span class="chip on">${esc(m)}</span>`).join('')}
         ${ex.secondary.map((m) => `<span class="chip">${esc(m)}</span>`).join('')}
       </div>
-      <p class="muted small">メイン（濃い色）／サブ ・ 目標 ${ex.range[0]}〜${ex.range[1]}${ex.unit === 'kg' || ex.unit === 'bw' ? '回' : U[ex.unit]} × ${ex.sets}セット${ex.rest ? ` ・ 休憩 ${ex.rest}秒` : ''}</p>
-      <h4>フォームの要点</h4>
+      <p class="muted small">濃い色＝メイン／白＝サブ ・ 目標 ${ex.range[0]}〜${ex.range[1]}${ex.unit === 'kg' || ex.unit === 'bw' ? '回' : U[ex.unit]} × ${ex.sets}セット${ex.rest ? ` ・ 休憩 ${ex.rest}秒` : ''}</p>
+
+      <h4>フォームのポイント</h4>
       <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
-      <h4>よくある失敗</h4>
+      <h4>よくある間違い</h4>
       <ul class="tips warn">${ex.mistakes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
       ${ex.regression ? `<h4>できないとき</h4><p>${esc(ex.regression)}</p>` : ''}
       ${ex.progression ? `<h4>慣れたら</h4><p>${esc(ex.progression)}</p>` : ''}
       ${ex.note ? `<p class="hint">※ ${esc(ex.note)}</p>` : ''}
+
+      <a class="btn block mt yt" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener noreferrer">▶ YouTubeで見る（「${esc(ex.name.replace(/（.*?）/g, ''))}」で検索）</a>
       ${inActive ? '<button class="btn ghost danger block mt" data-rm="1">この種目を今日のメニューから外す</button>' : ''}
       ${UI.sheetFoot()}`;
-    UI.sheet(html, (sh) => sh.addEventListener('click', (e) => {
-      if (e.target.closest('[data-rm]')) { active().items.splice(itemIndex, 1); UI.closeSheet(); persist(); }
-    }));
+    UI.sheet(html, (sh) => {
+      const fig = Figures.mount(sh.querySelector('#fig-stage'), exId);
+      const tg = sh.querySelector('#fig-toggle');
+      const syncBtn = () => { tg.textContent = fig.paused ? '▶ 再生' : '⏸ 一時停止'; };
+      syncBtn();
+      sh.addEventListener('click', (e) => {
+        const f = e.target.closest('[data-fig]');
+        if (f) {
+          if (f.dataset.fig === 'toggle') fig.toggle(); else fig.show(Number(f.dataset.fig));
+          syncBtn();
+          return;
+        }
+        if (e.target.closest('[data-rm]')) { active().items.splice(itemIndex, 1); UI.closeSheet(); persist(); }
+      });
+    });
   }
 
   // ---- 種目追加シート ----
