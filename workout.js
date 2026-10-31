@@ -4,6 +4,7 @@ const Workout = (() => {
   let root;
   let view = 'today';          // today | history | progress | balance | library
   let balWeek = 0;             // 部位タブで見ている週（0=今週, -1=先週…）
+  let shortMode = false;       // 時間がない日の短縮メニュー
   let pickedDay = null;        // 「別のメニューを選ぶ」で選んだ日
   let progressEx = null;
   let progressMetric = null;
@@ -44,11 +45,14 @@ const Workout = (() => {
     const day = Program.DAYS[dayKey];
     const target = S().settings.daysPerWeek;
     const done = weekCount();
-    const items = day.items.map((id) => {
+    const ids = shortMode ? Program.shortItems(dayKey) : day.items;
+    const items = ids.map((id) => {
       const ex = Exercises.byId[id];
-      const vol = ex.unit === 'sec' || ex.unit === 'min' ? `${ex.range[0]}〜${ex.range[1]}${U[ex.unit]}` : `${ex.sets}×${ex.range[0]}〜${ex.range[1]}回`;
+      const n = shortMode ? Program.SHORT_SETS : ex.sets;
+      const vol = ex.unit === 'sec' || ex.unit === 'min' ? `${ex.range[0]}〜${ex.range[1]}${U[ex.unit]}` : `${n}×${ex.range[0]}〜${ex.range[1]}回`;
       return `<li><span>${esc(ex.name)}${ex.optional ? ' <small class="muted">任意</small>' : ''}</span><span class="muted">${vol}</span></li>`;
     }).join('');
+    const minN = Program.estimateMin(dayKey, false), minS = Program.estimateMin(dayKey, true);
     return `
       <div class="card">
         <div class="row between"><span class="muted">今週のトレーニング</span><b>${done} / ${target} 回</b></div>
@@ -56,15 +60,20 @@ const Workout = (() => {
       </div>
       <div class="card hero">
         <div class="muted">${pickedDay ? '選んだメニュー' : '次のメニュー'}</div>
-        <h2>${esc(day.name)}</h2>
+        <h2>${esc(day.name)}${shortMode ? ' <span class="tag">短縮</span>' : ''}</h2>
         <p class="muted">${esc(day.sub)}</p>
+        <div class="seg mode-seg">
+          <button class="${shortMode ? '' : 'on'}" data-act="mode" data-m="normal">通常 約${minN}分</button>
+          <button class="${shortMode ? 'on' : ''}" data-act="mode" data-m="short">⏱ 短縮 約${minS}分</button>
+        </div>
+        ${shortMode ? `<p class="hint">時間がない日用：大きい種目を3つ、各${Program.SHORT_SETS}セット・休憩は最大${Program.SHORT_REST}秒。少なくてもやった日は筋肉の維持・成長に十分効果があります。</p>` : ''}
         <ul class="preview">${items}</ul>
       </div>
       <div class="card">
         <h3>別のメニューにする</h3>
         <div class="chips">${rot.map((k) => `<button class="chip ${k === dayKey ? 'on' : ''}" data-act="pick" data-day="${k}">${Program.DAYS[k].name}</button>`).join('')}</div>
       </div>
-      <div class="bottom-cta"><button class="btn primary big" data-act="start" data-day="${dayKey}">ワークアウト開始</button></div>`;
+      <div class="bottom-cta"><button class="btn primary big" data-act="start" data-day="${dayKey}">${shortMode ? '⏱ 短縮版で開始' : 'ワークアウト開始'}</button></div>`;
   }
 
   // ---- 実施中 ----
@@ -147,7 +156,7 @@ const Workout = (() => {
     }).join('');
     return `
       <div class="wk-head">
-        <div><h2>${esc(day ? day.name : 'ワークアウト')}</h2><span class="muted">開始から <span id="elapsed">0:00</span></span></div>
+        <div><h2>${esc(day ? day.name : 'ワークアウト')}${a.short ? ' <span class="tag">⏱ 短縮</span>' : ''}</h2><span class="muted">開始から <span id="elapsed">0:00</span></span></div>
         <button class="btn small ghost" data-act="cancel">中止</button>
       </div>
       <p class="hint">セットを終えたら ✓ をタップ → 休憩タイマーが始まります。数字をタップすると重量・回数・RPEを変更できます。</p>
@@ -177,7 +186,7 @@ const Workout = (() => {
       return `
         <details class="card hist">
           <summary>
-            <div><b>${UI.fmtDate(w.date)}</b> ${esc(Program.DAYS[w.dayKey]?.name || '')}</div>
+            <div><b>${UI.fmtDate(w.date)}</b> ${esc(Program.DAYS[w.dayKey]?.name || '')}${w.short ? ' <span class="tag">短縮</span>' : ''}</div>
             <div class="muted small">${w.items.length}種目 · ${setsN}セット${min ? ` · ${min}分` : ''}${prN ? ` · 🏆${prN}` : ''}</div>
           </summary>
           <ul class="hist-list">${rows}</ul>
@@ -333,6 +342,7 @@ const Workout = (() => {
     switch (b.dataset.act) {
       case 'view': view = b.dataset.v; render(root); window.scrollTo(0, 0); break;
       case 'pick': pickedDay = b.dataset.day; render(root); break;
+      case 'mode': shortMode = b.dataset.m === 'short'; render(root); break;
       case 'start': start(b.dataset.day); break;
       case 'toggle': toggleSet(i, s); break;
       case 'wu': {
@@ -362,17 +372,24 @@ const Workout = (() => {
 
   function persist() { Store.save(); render(root); }
 
-  function newItem(exId) {
+  function newItem(exId, short = false) {
     const ex = Exercises.byId[exId];
     const sug = Program.suggest(exId);
-    const sets = Array.from({ length: ex.sets }, () => ({ weight: sug.weight || 0, reps: sug.reps, rpe: null, done: false }));
-    return { exId, sug, sets };
+    const n = short ? Program.SHORT_SETS : ex.sets;
+    const sets = Array.from({ length: n }, () => ({ weight: sug.weight || 0, reps: sug.reps, rpe: null, done: false }));
+    const item = { exId, sug, sets };
+    if (short && ex.rest) item.rest = Math.min(ex.rest, Program.SHORT_REST);
+    return item;
   }
+  // その種目の休憩時間（短縮版は短め）
+  const restOf = (it) => { const ex = Exercises.byId[it.exId]; return it.rest ?? (ex.rest === 0 ? 0 : ex.rest || S().settings.restSec); };
 
   function start(dayKey) {
     const day = Program.DAYS[dayKey];
-    S().active = { id: UI.uid(), dayKey, date: UI.dateStr(), startedAt: Date.now(), items: day.items.map(newItem), rest: null };
+    const ids = shortMode ? Program.shortItems(dayKey) : day.items;
+    S().active = { id: UI.uid(), dayKey, date: UI.dateStr(), startedAt: Date.now(), items: ids.map((id) => newItem(id, shortMode)), rest: null, ...(shortMode ? { short: true } : {}) };
     pickedDay = null;
+    shortMode = false;
     persist();
     window.scrollTo(0, 0);
   }
@@ -389,8 +406,7 @@ const Workout = (() => {
     const set = it.sets[s];
     set.done = !set.done;
     if (set.done) {
-      const ex = Exercises.byId[it.exId];
-      const sec = ex.rest === 0 ? 0 : ex.rest || S().settings.restSec;
+      const sec = restOf(it);
       if (sec) Rest.start(sec);
       markPR(it, set);
     } else {
@@ -471,7 +487,7 @@ const Workout = (() => {
         it.sets[s] = set;
         UI.closeSheet();
         if (set.done && !wasDone) {
-          const sec = ex.rest === 0 ? 0 : ex.rest || S().settings.restSec;
+          const sec = restOf(it);
           if (sec) Rest.start(sec);
         }
         // 完了したセットは（数字を直した場合も）自己ベストを判定し直す
@@ -561,7 +577,7 @@ const Workout = (() => {
     }
     const undone = a.items.reduce((n, it) => n + it.sets.filter((s) => !s.done).length, 0);
     if (undone && !confirm(`未完了のセットが${undone}つあります。完了したセットだけ記録して終了しますか？`)) return;
-    S().workouts.push({ id: a.id, date: a.date, dayKey: a.dayKey, startedAt: a.startedAt, finishedAt: Date.now(), items });
+    S().workouts.push({ id: a.id, date: a.date, dayKey: a.dayKey, startedAt: a.startedAt, finishedAt: Date.now(), items, ...(a.short ? { short: true } : {}) });
     endActive();
     const sets = items.reduce((n, it) => n + it.sets.length, 0);
     const prN = items.reduce((n, it) => n + it.sets.filter((s) => s.pr).length, 0);

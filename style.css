@@ -467,3 +467,8 @@ textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; back
 .set-prev .up { color: var(--good); }
 .set.done .set-prev { color: var(--good); opacity: .85; }
 .prev-box { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-size: 14px; }
+
+/* ===== 短縮メニュー ===== */
+.mode-seg { margin: 10px 0 6px; }
+.mode-seg button { font-size: 13px; }
+h2 .tag { font-size: 12px; vertical-align: middle; }

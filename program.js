@@ -230,5 +230,35 @@ const Program = (() => {
     return out;
   }
 
-  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup, bests, checkPR, recentPRs, e1rm };
+  // ---- 時間がない日の短縮メニュー ----
+  // 大きい種目（休憩90秒以上）から、まだ使っていない部位を優先して3種目選び、各2セット・休憩短め
+  const SHORT_SETS = 2;
+  const SHORT_REST = 90;
+  function shortItems(dayKey) {
+    const items = DAYS[dayKey].items.map((id) => Exercises.byId[id]).filter((e) => e && !e.optional);
+    const big = items.filter((e) => (e.rest || 0) >= 90);
+    const picked = [];
+    const used = new Set();
+    const main = (e) => Object.keys(e.work).filter((k) => e.work[k] >= 1);
+    big.forEach((e) => { if (picked.length < 3 && main(e).some((g) => !used.has(g))) { picked.push(e); main(e).forEach((g) => used.add(g)); } });
+    [...big, ...items].forEach((e) => { if (picked.length < 3 && !picked.includes(e)) picked.push(e); });
+    // 元のメニューの順番に並べ直す
+    return items.filter((e) => picked.includes(e)).map((e) => e.id);
+  }
+
+  // 所要時間の目安（分）：1セット約45秒＋休憩、全体のウォームアップ5分、種目ごとの準備2分
+  function estimateMin(dayKey, short) {
+    const ids = short ? shortItems(dayKey) : DAYS[dayKey].items;
+    let sec = 5 * 60;
+    ids.forEach((id) => {
+      const e = Exercises.byId[id];
+      if (e.unit === 'min') { sec += e.range[0] * 60; return; }
+      const n = short ? SHORT_SETS : e.sets;
+      const rest = short ? Math.min(e.rest || 90, SHORT_REST) : (e.rest || Store.data.settings.restSec);
+      sec += 120 + n * 45 + (n - 1) * rest;
+    });
+    return Math.round(sec / 60 / 5) * 5;
+  }
+
+  return { DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup, bests, checkPR, recentPRs, e1rm, shortItems, estimateMin, SHORT_SETS, SHORT_REST };
 })();
