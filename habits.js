@@ -130,6 +130,7 @@ const Habits = (() => {
       </div>
 
       ${Meals.cardHtml(date)}
+      ${Meals.trendHtml()}
 
       <div class="card hb">
         ${head('sleep', '😴 睡眠')}
@@ -190,6 +191,7 @@ const Habits = (() => {
     el.onclick = onClick;
     el.onchange = onChange;
     Meals.fillThumbs(el);
+    Meals.drawTrend(el);
   }
 
   function blueprintHtml() {

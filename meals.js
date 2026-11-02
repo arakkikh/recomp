@@ -285,6 +285,8 @@ kcal はキロカロリー、protein・fat・carbs はグラムの数値です�
 
   function onClick(b, date, rerender) {
     const act = b.dataset.m;
+    if (act === 'tmetric') { trendMetric = b.dataset.k; rerender(); return; }
+    if (act === 'trange') { trendRange = b.dataset.r; rerender(); return; }
     if (act === 'add') openAdd({ date, slot: b.dataset.slot || guessSlot(), photo: null, pasted: '', onDone: rerender });
     if (act === 'edit') openEdit(date, b.dataset.id, rerender);
     if (act === 'favs') openFavs({ date, slot: guessSlot(), photo: null, pasted: '', onDone: rerender });
@@ -559,5 +561,80 @@ kcal はキロカロリー、protein・fat・carbs はグラムの数値です�
     return { kcal: t.reduce((a, x) => a + x.kcal, 0) / t.length, p: t.reduce((a, x) => a + x.p, 0) / t.length, days: logged.length };
   }
 
-  return { cardHtml, fillThumbs, onClick, totals, proteinOf, weekAverages, parseAnswer, getKey, setKey, MODELS, clearThumbs, ASK_TEXT };
+  // ================= 週平均の推移グラフ =================
+  let trendMetric = 'kcal';  // kcal | p
+  let trendRange = '12';     // 4 | 12 | all（週）
+  const addDays = (s, n) => { const d = UI.parseDate(s); d.setDate(d.getDate() + n); return UI.dateStr(d); };
+
+  // 食事を記録した週ごとの平均（記録した日だけで平均。記録のない日は0kcalとして数えない）
+  function weeklySeries() {
+    const dates = Object.keys(S().meals).filter((d) => dayList(d).length).sort();
+    if (!dates.length) return [];
+    const today = UI.dateStr();
+    const map = new Map();
+    dates.forEach((d) => {
+      if (d > today) return;
+      const ws = UI.dateStr(UI.weekStart(UI.parseDate(d)));
+      if (!map.has(ws)) map.set(ws, []);
+      map.get(ws).push(d);
+    });
+    let weeks = [...map.keys()].sort();
+    if (trendRange !== 'all') {
+      const from = addDays(UI.dateStr(UI.weekStart()), -7 * (Number(trendRange) - 1));
+      weeks = weeks.filter((w) => w >= from);
+    }
+    return weeks.map((w) => ({ week: w, ...weekAverages(map.get(w)) }));
+  }
+
+  // 週の目安：筋トレの日と休みの日の目安を、週の筋トレ回数で平均
+  function weeklyGoal() {
+    const t = Habits.targets();
+    if (!t.ok) return null;
+    const n = S().settings.daysPerWeek;
+    return { kcal: Math.round((t.train * n + t.rest * (7 - n)) / 7 / 10) * 10, p: t.protein };
+  }
+
+  function trendHtml() {
+    const series = weeklySeries();
+    const goal = weeklyGoal();
+    const ranges = [['4', '4週'], ['12', '12週'], ['all', '全期間']];
+    const rows = series.slice().reverse().map((w) => `<tr>
+        <td>${UI.fmtShort(w.week)}〜${UI.fmtShort(addDays(w.week, 6))}</td>
+        <td>${Math.round(w.kcal).toLocaleString()}</td><td>${Math.round(w.p)}</td><td>${w.days}日</td>
+      </tr>`).join('');
+    return `<div class="card">
+      <div class="row between">
+        <h3>📈 食事の推移（週の平均）</h3>
+      </div>
+      <div class="row between mt">
+        <div class="chips">
+          <button class="chip ${trendMetric === 'kcal' ? 'on' : ''}" data-m="tmetric" data-k="kcal">カロリー</button>
+          <button class="chip ${trendMetric === 'p' ? 'on' : ''}" data-m="tmetric" data-k="p">タンパク質</button>
+        </div>
+        <div class="seg seg-sm">${ranges.map(([k, l]) => `<button class="${trendRange === k ? 'on' : ''}" data-m="trange" data-r="${k}">${l}</button>`).join('')}</div>
+      </div>
+      ${series.length ? `<div id="meal-trend"></div>
+        <p class="hint">点は各週の平均（食事を記録した日だけで計算）。${goal ? `点線は目安（${trendMetric === 'kcal' ? `筋トレ週${S().settings.daysPerWeek}回の場合の1日平均 ${goal.kcal.toLocaleString()}kcal` : `タンパク質 ${goal.p}g`}）です。` : ''}記録が少ない週（1〜2日）は、ぶれやすいので参考程度に。グラフをタップすると値が出ます。</p>
+        <table class="tbl tbl-num"><thead><tr><th>週</th><th>kcal</th><th>P(g)</th><th>記録</th></tr></thead><tbody>${rows}</tbody></table>`
+        : '<p class="muted small mt">食事を記録すると、週ごとの平均カロリーとタンパク質の推移がここに出ます。</p>'}
+    </div>`;
+  }
+
+  function drawTrend(root) {
+    const el = root.querySelector('#meal-trend');
+    if (!el) return;
+    const series = weeklySeries();
+    const goal = weeklyGoal();
+    const k = trendMetric;
+    const pts = series.map((w) => ({ x: w.week, y: Math.round(k === 'kcal' ? w.kcal : w.p) }));
+    Chart.line(el, pts, {
+      unit: k === 'kcal' ? 'kcal' : 'g',
+      label: k === 'kcal' ? '週の平均カロリーの推移' : '週の平均タンパク質の推移',
+      fmt: (n) => Math.round(n).toLocaleString(),
+      ref: goal ? { y: k === 'kcal' ? goal.kcal : goal.p, label: '目安' } : null,
+      pointLabel: 'の週',
+    });
+  }
+
+  return { trendHtml, drawTrend, cardHtml, fillThumbs, onClick, totals, proteinOf, weekAverages, parseAnswer, getKey, setKey, MODELS, clearThumbs, ASK_TEXT };
 })();
