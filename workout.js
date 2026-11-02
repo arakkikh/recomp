@@ -17,18 +17,20 @@ const Workout = (() => {
   // ================= 画面描画 =================
   function render(el) {
     root = el;
-    const tabs = [['today', active() ? '実施中' : '今日'], ['history', '履歴'], ['progress', '推移'], ['balance', '部位'], ['library', '種目']];
+    const tabs = [['today', active() ? '実施中' : '今日'], ['hiit', 'HIIT'], ['history', '履歴'], ['progress', '推移'], ['balance', '部位'], ['library', '種目']];
     const seg = `<div class="seg" role="tablist">${tabs.map(([k, l]) => `<button role="tab" class="${view === k ? 'on' : ''}" data-act="view" data-v="${k}">${l}</button>`).join('')}</div>`;
     let body = '';
     if (view === 'today') body = active() ? activeHtml() : todayHtml();
     if (view === 'history') body = historyHtml();
     if (view === 'progress') body = progressHtml();
     if (view === 'balance') body = balanceHtml();
+    if (view === 'hiit') body = '<div id="hiit-host"></div>';
     if (view === 'library') body = libraryHtml();
     el.innerHTML = seg + body;
     el.onclick = onClick;
     el.onchange = onChange;
     if (view === 'progress') drawProgress();
+    if (view === 'hiit') Hiit.render(el.querySelector('#hiit-host'));
     if (view === 'today' && active()) requestWakeLock();
     tick();
   }
@@ -36,7 +38,7 @@ const Workout = (() => {
   // ---- 今日（開始前）----
   function weekCount() {
     const ws = UI.dateStr(UI.weekStart());
-    return S().workouts.filter((w) => w.date >= ws).length;
+    return S().workouts.filter((w) => w.date >= ws && Program.isStrength(w)).length;
   }
 
   function todayHtml() {
@@ -200,6 +202,16 @@ const Workout = (() => {
     const ws = S().workouts.slice().reverse();
     if (!ws.length) return '<div class="card"><p class="muted center">まだ記録がありません。「今日」からワークアウトを始めましょう。</p></div>';
     return ws.map((w) => {
+      if (w.hiit) {
+        return `<details class="card hist">
+          <summary>
+            <div><b>${UI.fmtDate(w.date)}</b> <span class="tag">⏱ HIIT</span></div>
+            <div class="muted small">${esc(Hiit.summary(w.hiit))}</div>
+          </summary>
+          <ul class="hist-list"><li><span>種目</span><span class="muted">${esc([...new Set(w.hiit.moves)].join('、'))}</span></li></ul>
+          <button class="btn small ghost danger" data-act="delwk" data-id="${w.id}">この記録を削除</button>
+        </details>`;
+      }
       const min = w.finishedAt && w.startedAt ? Math.round((w.finishedAt - w.startedAt) / 60000) : null;
       const setsN = w.items.reduce((a, it) => a + it.sets.length, 0);
       const prN = w.items.reduce((a, it) => a + it.sets.filter((s) => s.pr).length, 0);

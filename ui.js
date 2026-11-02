@@ -142,5 +142,7 @@ const UI = (() => {
   const sheetHead = (title) => `<div class="sheet-head"><button class="back-btn" data-sheet-back>‹ 戻る</button><h3>${title}</h3></div>`;
   const sheetFoot = (extra = '') => `<div class="row gap mt form-foot"><button class="btn ghost" data-sheet-back>‹ 戻る</button>${extra}</div>`;
 
-  return { celebrate, fanfare, sheetHead, sheetFoot, esc, dateStr, parseDate, fmtDate, fmtShort, fmtClock, num, uid, weekStart, sheet, closeSheet, toast, unlockAudio, beep, vibrate };
+  const audio = () => audioCtx;
+
+  return { audio, celebrate, fanfare, sheetHead, sheetFoot, esc, dateStr, parseDate, fmtDate, fmtShort, fmtClock, num, uid, weekStart, sheet, closeSheet, toast, unlockAudio, beep, vibrate };
 })();

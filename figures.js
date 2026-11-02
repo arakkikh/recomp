@@ -173,6 +173,60 @@ const Figures = (() => {
   };
   FIG.chinup = { ...FIG.pullup, muscles: ['lats', 'biceps'] };
 
+  // ---- HIIT 用の動き（自重・軽いダンベル）----
+  FIG.hiit_squat = {
+    db: null, muscles: ['quads', 'glutes'],
+    poses: [
+      { ...STAND, anchor: ['A', [110, 2]] },
+      { torso: 62, th: -10, sh: -105, ft: 0, ua: 0, fa: 0, anchor: ['A', [110, 2]] },
+    ],
+  };
+  FIG.hiit_lunge = {
+    db: null, muscles: ['quads', 'glutes'], caption: '片足を後ろに引いてしゃがみ、戻ったら反対の足',
+    poses: [
+      { torso: 88, ua: -90, fa: -90, th: -90, sh: -90, ft: 0, th2: -90, sh2: -90, ft2: 0, anchor: ['A', [115, 2]] },
+      { torso: 80, ua: -90, fa: -90, th: -10, sh: -100, ft: 0, th2: -110, sh2: -180, ft2: -60, anchor: ['A', [115, 2]] },
+    ],
+  };
+  FIG.hiit_pushup = {
+    props: [bench(120, 178)], db: null, muscles: ['chest', 'triceps'], caption: 'ベンチに手をついた斜めの腕立て。体は一直線に',
+    poses: [
+      { torso: 41, ua: -75, fa: -75, th: 221, sh: 221, ft: -100, anchor: ['W', [135, 25]] },
+      { torso: 29, ua: -150, fa: -40, th: 209, sh: 209, ft: -100, anchor: ['W', [135, 25]] },
+    ],
+  };
+  FIG.hiit_jack = {
+    view: 'front', db: null, muscles: [], caption: 'ジャンプがつらければ、片足ずつ横に出すだけでOK',
+    poses: [
+      { torso: 90, ua: -82, fa: -82, th: -92, sh: -92, ft: 0, anchor: ['H', [100, 57]] },
+      { torso: 90, ua: 70, fa: 80, th: -65, sh: -65, ft: 0, anchor: ['H', [100, 57]] },
+    ],
+  };
+  FIG.hiit_highknee = {
+    db: null, muscles: ['quads'], caption: 'その場でもも上げ。慣れないうちは歩くペースで',
+    poses: [
+      { torso: 90, ua: -60, fa: 30, ua2: -120, fa2: -60, th: 0, sh: -90, ft: 0, th2: -90, sh2: -90, ft2: 0, anchor: ['H', [100, 58]] },
+      { torso: 90, ua: -120, fa: -60, ua2: -60, fa2: 30, th: -90, sh: -90, ft: 0, th2: 0, sh2: -90, ft2: 0, anchor: ['H', [100, 58]] },
+    ],
+  };
+  FIG.hiit_mountain = {
+    db: null, muscles: ['abs'], caption: '腕立ての姿勢で、膝を胸に引き寄せる（左右交互）',
+    poses: [
+      { torso: 26, ua: -88, fa: -88, th: 206, sh: 206, ft: -110, th2: 206, sh2: 206, ft2: -110, anchor: ['W', [140, 2]] },
+      // 途中：腰を少し上げて、膝が床をこすらないように通す
+      { torso: 15, ua: -88, fa: -88, th: 280, sh: 185, ft: -110, th2: 215, sh2: 215, ft2: -110, anchor: ['W', [140, 2]] },
+      { torso: 20, ua: -88, fa: -88, th: 330, sh: 200, ft: -110, th2: 212, sh2: 212, ft2: -110, anchor: ['W', [140, 2]] },
+    ],
+  };
+  FIG.hiit_thruster = {
+    db: 'both', muscles: ['quads', 'delts'], caption: '軽いダンベルで。しゃがんで立つ勢いで頭上に押し上げる',
+    poses: [
+      { torso: 70, th: -10, sh: -105, ft: 0, ua: -60, fa: 100, anchor: ['A', [110, 2]] },
+      { torso: 90, th: -90, sh: -90, ft: 0, ua: 92, fa: 90, anchor: ['A', [110, 2]] },
+    ],
+  };
+  FIG.hiit_stepup = { ...FIG.step_up, db: null };
+
   // ---- 関節の位置を計算 ----
   function joints(p, view) {
     const front = view === 'front';
@@ -295,7 +349,11 @@ const Figures = (() => {
   function svg(exId, k = 0) {
     const def = FIG[exId];
     if (!def) return '';
-    const p = lerpPose(def.poses[0], def.poses[1], k);
+    // 姿勢が3つある種目は「始め→途中→終わり」の順に補間する
+    const ps = def.poses;
+    const p = ps.length === 3
+      ? (k < 0.5 ? lerpPose(ps[0], ps[1], k * 2) : lerpPose(ps[1], ps[2], (k - 0.5) * 2))
+      : lerpPose(ps[0], ps[1], k);
     const j = joints(p, def.view);
     const front = def.view === 'front';
     const ms = muscleShapes(def, j);

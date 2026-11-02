@@ -53,8 +53,10 @@ const Habits = (() => {
 
   // その日に筋トレをしたか（実施中を含む）
   const trainedOn = (d) => S().workouts.some((w) => w.date === d) || (S().active && S().active.date === d);
-  // 筋トレ記録に含まれるステッパーの分数
-  const stepperFromWorkouts = (d) => S().workouts.filter((w) => w.date === d)
+  // その日のHIITの分数
+  const hiitMin = (d) => Math.round(S().workouts.filter((w) => w.date === d && w.hiit).reduce((a, w) => a + w.hiit.totalSec, 0) / 60);
+  // 筋トレ記録に含まれるステッパーの分数（＋HIITの分数）
+  const stepperFromWorkouts = (d) => hiitMin(d) + S().workouts.filter((w) => w.date === d && !w.hiit)
     .reduce((a, w) => a + w.items.filter((it) => it.exId === 'stepper').reduce((b, it) => b + it.sets.reduce((c, s) => c + s.reps, 0), 0), 0);
 
   // ================= チェック項目の判定 =================
@@ -75,7 +77,7 @@ const Habits = (() => {
       { k: 'veg', label: `野菜 ${s.vegGoal}皿`, ok: h.veg == null ? null : h.veg >= s.vegGoal, detail: h.veg != null ? `${h.veg}皿` : '' },
       { k: 'protein', label: t.ok ? `タンパク質 ${t.protein}g` : 'タンパク質', ok: h.protein == null || !t.ok ? null : h.protein >= t.protein * 0.9, detail: h.protein != null ? `${h.protein}g` : '' },
       {
-        k: 'move', label: `${s.stepsGoal.toLocaleString()}歩 or ステッパー${s.stepperGoalMin}分`, detail: [h.steps != null ? `${h.steps.toLocaleString()}歩` : '', stepperMin ? `ステッパー${stepperMin}分` : ''].filter(Boolean).join(' / '),
+        k: 'move', label: `${s.stepsGoal.toLocaleString()}歩 or ステッパー・HIIT ${s.stepperGoalMin}分`, detail: [h.steps != null ? `${h.steps.toLocaleString()}歩` : '', stepperMin ? `ステッパー・HIIT ${stepperMin}分` : ''].filter(Boolean).join(' / '),
         ok: h.steps == null && !stepperMin ? null : (h.steps || 0) >= s.stepsGoal || stepperMin >= s.stepperGoalMin,
       },
     ];
@@ -163,12 +165,12 @@ const Habits = (() => {
       </div>
 
       <div class="card hb">
-        ${head('move', '🚶 歩数・ステッパー')}
+        ${head('move', '🚶 歩数・ステッパー・HIIT')}
         <div class="time-row">
           <label class="bf"><span>歩数</span><input type="text" inputmode="numeric" data-f="steps" value="${h.steps ?? ''}" placeholder="例 8000"></label>
           <label class="bf"><span>ステッパー（分）</span><input type="text" inputmode="numeric" data-f="stepperMin" value="${h.stepperMin ?? ''}" placeholder="0"></label>
         </div>
-        ${stepperMinW ? `<p class="hint">筋トレ記録のステッパー ${stepperMinW}分 も自動で加算しています。</p>` : '<p class="hint">歩数はiPhoneの「ヘルスケア」アプリで確認できます。</p>'}
+        ${stepperMinW ? `<p class="hint">筋トレ記録のステッパーとHIIT（${stepperMinW}分）も自動で加算しています。</p>` : '<p class="hint">歩数はiPhoneの「ヘルスケア」アプリで確認できます。</p>'}
       </div>
 
       ${s.alcoholCheck ? `

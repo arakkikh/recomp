@@ -13,6 +13,10 @@ const Store = (() => {
     body: [],     // 体組成（段階②）
     habits: {},   // 習慣（段階③）
     deload: { current: null, history: [], snoozeUntil: null }, // 軽めの週
+    hiit: { // HIITタイマーの設定（初期値は初心者向け）
+      cfg: { presetId: 'p_beginner', work: 20, rest: 40, rounds: 6, sets: 1, setRest: 60, warmupOn: true, warmup: 180, cooldownOn: true, cooldown: 120, moves: [] },
+      custom: [], sound: true, voice: true,
+    },
   });
 
   let data = defaults();
@@ -28,6 +32,7 @@ const Store = (() => {
       workouts: Array.isArray(d.workouts) ? d.workouts : [],
       body: Array.isArray(d.body) ? d.body : [],
       habits: d.habits && typeof d.habits === 'object' ? d.habits : {},
+      hiit: { ...base.hiit, ...(d.hiit || {}), cfg: { ...base.hiit.cfg, ...((d.hiit && d.hiit.cfg) || {}) }, custom: (d.hiit && Array.isArray(d.hiit.custom)) ? d.hiit.custom : [] },
       deload: { ...base.deload, ...(d.deload || {}), history: (d.deload && Array.isArray(d.deload.history)) ? d.deload.history : [] },
       version: VERSION,
       photos: undefined, // 写真は localStorage には入れない（IndexedDB に別保存）

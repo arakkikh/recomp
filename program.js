@@ -262,6 +262,9 @@ const Program = (() => {
     return Math.round(sec / 60 / 5) * 5;
   }
 
+  // 筋トレの記録か（HIITは筋トレの回数・疲れの判定には数えない）
+  const isStrength = (w) => w.dayKey !== 'hiit';
+
   // ---- デロード（軽めの週）----
   const DELOAD_WEEKS = 8;     // これだけ続けたら一度軽めの週を
   const DELOAD_RATIO = 0.6;   // 重量の目安（いつもの約60%）
@@ -279,7 +282,7 @@ const Program = (() => {
   function deloadCheck() {
     const dl = deloadState();
     const today = UI.dateStr();
-    const ws = Store.data.workouts.filter((w) => !w.deload);
+    const ws = Store.data.workouts.filter((w) => !w.deload && isStrength(w));
     const res = { suggest: false, reasons: [], notes: [], weeks: 0 };
     if (dl.current || !ws.length) return res;
     if (dl.snoozeUntil && today < dl.snoozeUntil) return res;
@@ -351,6 +354,6 @@ const Program = (() => {
   }
   function snoozeDeload(days = 7) { deloadState().snoozeUntil = addDaysStr(UI.dateStr(), days); Store.save(); }
 
-  return { DELOAD_RATIO, deloadState, inDeload, deloadCheck, startDeload, endDeload, snoozeDeload,
+  return { isStrength, DELOAD_RATIO, deloadState, inDeload, deloadCheck, startDeload, endDeload, snoozeDeload,
     DAYS, rotation, nextDay, sessionsFor, suggest, fmtSets, metrics, groupSets, warmup, bests, checkPR, recentPRs, e1rm, shortItems, estimateMin, SHORT_SETS, SHORT_REST };
 })();

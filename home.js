@@ -38,16 +38,16 @@ const Home = (() => {
     const out = [];
     const a = S().active;
     const ws = UI.dateStr(UI.weekStart());
-    const weekDone = S().workouts.filter((w) => w.date >= ws).length;
+    const weekDone = S().workouts.filter((w) => w.date >= ws && Program.isStrength(w)).length;
     const target = S().settings.daysPerWeek;
-    const doneToday = S().workouts.some((w) => w.date === today);
+    const doneToday = S().workouts.some((w) => w.date === today && Program.isStrength(w));
 
     // 筋トレ
     if (a) out.push({ icon: '🏋️', text: `${Program.DAYS[a.dayKey]?.name || 'ワークアウト'}を実施中`, sub: '続きを記録する', tab: 'workout', state: 'doing' });
     else if (doneToday) out.push({ icon: '🏋️', text: '筋トレ完了', sub: 'お疲れさまでした', tab: 'workout', state: 'done' });
     else if (weekDone >= target) out.push({ icon: '🏋️', text: '今週の筋トレ目標は達成済み', sub: '今日は休養か、ステッパーで軽く', tab: 'workout', state: 'done' });
     else {
-      const trainedYesterday = S().workouts.some((w) => w.date === UI.dateStr(addDays(new Date(), -1)));
+      const trainedYesterday = S().workouts.some((w) => w.date === UI.dateStr(addDays(new Date(), -1)) && Program.isStrength(w));
       out.push({ icon: '🏋️', text: `筋トレ：${Program.DAYS[Program.nextDay()].name}`, sub: `今週 ${weekDone}/${target}回${trainedYesterday ? '（昨日もやったので、疲れていれば休養でもOK）' : ''}`, tab: 'workout', state: 'todo' });
     }
 
@@ -85,7 +85,8 @@ const Home = (() => {
     const days = Array.from({ length: 7 }, (_, i) => UI.dateStr(addDays(start, i)));
     const from = days[0], to = days[6];
     const today = UI.dateStr();
-    const ws = S().workouts.filter((w) => w.date >= from && w.date <= to);
+    const ws = S().workouts.filter((w) => w.date >= from && w.date <= to && Program.isStrength(w));
+    const hiitN = S().workouts.filter((w) => w.date >= from && w.date <= to && w.hiit).length;
     const sets = ws.reduce((a, w) => a + w.items.reduce((b, it) => b + it.sets.length, 0), 0);
 
     // 習慣
@@ -130,7 +131,7 @@ const Home = (() => {
       if (cb > pb) prs.push({ name: ex.name, text: ex.unit === 'kg' ? `推定1RM ${UI.num(Math.round(pb * 10) / 10)} → ${UI.num(Math.round(cb * 10) / 10)}kg` : `${pb} → ${cb}${Exercises.UNIT_LABEL[ex.unit]}` });
     });
 
-    return { from, to, days, ws, sets, scores, achievedDays, sleepAvg, vegAvg, proteinAvg, stepsAvg, weakest, bodyCmp, prs, isCurrent: offset === 0 };
+    return { hiitN, from, to, days, ws, sets, scores, achievedDays, sleepAvg, vegAvg, proteinAvg, stepsAvg, weakest, bodyCmp, prs, isCurrent: offset === 0 };
   }
 
   function comment(w) {
@@ -159,8 +160,9 @@ const Home = (() => {
     const dots = w.scores.map((s, i) => {
       const cls = s.future ? 'future' : s.achieved ? 'hit' : s.logged ? 'part' : 'none';
       const title = s.future ? '' : s.achieved ? '達成' : s.logged ? `${s.done}/${s.total}` : '記録なし';
-      const trained = S().workouts.some((x) => x.date === s.d);
-      return `<div class="wd"><span class="wd-l">${WD[i]}</span><span class="dot ${cls}" title="${title}">${s.achieved ? '✓' : s.logged && !s.future ? s.done : ''}</span><span class="wd-t">${trained ? '🏋️' : ''}</span></div>`;
+      const trained = S().workouts.some((x) => x.date === s.d && Program.isStrength(x));
+      const hiitDay = S().workouts.some((x) => x.date === s.d && x.hiit);
+      return `<div class="wd"><span class="wd-l">${WD[i]}</span><span class="dot ${cls}" title="${title}">${s.achieved ? '✓' : s.logged && !s.future ? s.done : ''}</span><span class="wd-t">${trained ? '🏋️' : ''}${hiitDay ? '⏱' : ''}</span></div>`;
     }).join('');
 
     let bodyRow = '';
@@ -207,10 +209,10 @@ const Home = (() => {
           <button class="icon-btn" data-act="wnext" aria-label="次の週" ${w.isCurrent ? 'disabled' : ''}>›</button>
         </div>
         <div class="week-dots">${dots}</div>
-        <p class="hint center">✓＝習慣達成 / 数字＝できた項目数 / 🏋️＝筋トレした日</p>
+        <p class="hint center">✓＝習慣達成 / 数字＝できた項目数 / 🏋️＝筋トレ / ⏱＝HIIT</p>
 
         <div class="tiles">
-          <div class="tile"><div class="tile-label">筋トレ</div><div class="tile-val">${w.ws.length}<small>/${S().settings.daysPerWeek}回</small></div><div class="muted small">${w.sets}セット</div></div>
+          <div class="tile"><div class="tile-label">筋トレ</div><div class="tile-val">${w.ws.length}<small>/${S().settings.daysPerWeek}回</small></div><div class="muted small">${w.sets}セット${w.hiitN ? ` ・ HIIT ${w.hiitN}回` : ''}</div></div>
           <div class="tile"><div class="tile-label">習慣達成</div><div class="tile-val">${w.achievedDays}<small>日</small></div></div>
           <div class="tile"><div class="tile-label">平均睡眠</div><div class="tile-val">${fmt1(w.sleepAvg, '')}<small>時間</small></div></div>
           <div class="tile"><div class="tile-label">平均 野菜</div><div class="tile-val">${fmt1(w.vegAvg, '')}<small>皿</small></div></div>

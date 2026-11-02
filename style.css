@@ -492,3 +492,59 @@ h2 .tag { font-size: 12px; vertical-align: middle; }
 .ph-full { display: block; width: 100%; max-height: 65vh; object-fit: contain; border-radius: 10px; background: var(--bg); }
 .check-row { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; cursor: pointer; }
 .check-row input { width: 22px; height: 22px; accent-color: var(--accent); }
+
+/* ===== HIIT：設定画面 ===== */
+.seg button { font-size: 13px; }
+.h-notice { border: 1px solid var(--warn); background: var(--warn-soft); }
+.h-notice p { margin: 6px 0 0; }
+.chip-x { min-width: 28px; height: 38px; margin-left: -10px; border: 0; background: transparent; color: var(--muted); font-size: 16px; cursor: pointer; }
+.h-row { display: flex; justify-content: space-between; align-items: center; min-height: 56px; border-top: 1px solid var(--line); }
+.card h3 + .h-row { border-top: 0; }
+.h-step { display: flex; align-items: center; gap: 8px; }
+.h-step .step { width: 48px; min-height: 44px; font-size: 22px; }
+.h-step b { min-width: 72px; text-align: center; font-size: 22px; font-variant-numeric: tabular-nums; }
+.h-step b small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+.h-move { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.h-move label { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.h-move select { min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 15px; padding: 0 6px; }
+
+/* ===== HIIT：実行中の画面（運動＝赤、休憩＝緑、準備＝黄）===== */
+body.hiit-on { overflow: hidden; }
+body.hiit-on .tabbar, body.hiit-on #restbar { display: none !important; }
+#hiit-run {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  color: #fff; background: #555; transition: background .25s; text-align: center; overflow: hidden;
+}
+#hiit-run.hr-work { background: #d93a3f; }
+#hiit-run.hr-rest { background: #1f8a4c; }
+#hiit-run.hr-prep { background: #f2b600; color: #1c1c1e; }
+#hiit-run.hr-done { background: var(--bg); color: var(--text); justify-content: center; }
+#hiit-run.paused { filter: saturate(.35); }
+.hr-top { width: 100%; max-width: 560px; display: flex; justify-content: space-between; align-items: baseline; }
+.hr-phase { font-size: 30px; font-weight: 800; }
+.hr-round { font-size: 15px; font-weight: 600; opacity: .9; }
+.hr-move { width: 100%; max-width: 560px; display: flex; align-items: center; gap: 12px; margin-top: 8px; min-height: 96px; text-align: left; }
+.hr-fig { flex: none; width: 128px; height: 96px; background: rgba(255,255,255,.92); border-radius: 12px; overflow: hidden; }
+.hr-fig:empty { display: none; }
+.hr-fig .fig { width: 100%; height: 100%; }
+.hr-mtext { display: flex; flex-direction: column; gap: 2px; }
+.hr-mlabel { font-size: 13px; opacity: .85; }
+.hr-mname { font-size: 22px; line-height: 1.25; }
+.hr-mtip { font-size: 14px; opacity: .9; }
+.hr-time { flex: 1; display: flex; align-items: center; justify-content: center; font-size: min(46vw, 260px); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.hr-time.count { font-size: min(62vw, 340px); animation: hr-pulse 1s ease-out infinite; }
+@keyframes hr-pulse { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.hr-next { font-size: 17px; font-weight: 600; opacity: .95; }
+.hr-bar { width: 100%; max-width: 560px; height: 8px; margin: 10px 0; border-radius: 4px; background: rgba(255,255,255,.35); overflow: hidden; }
+.hr-bar div { height: 100%; width: 0; background: #fff; transition: width .2s linear; }
+.hr-prep .hr-bar { background: rgba(0,0,0,.15); }
+.hr-prep .hr-bar div { background: #1c1c1e; }
+.hr-ctrl { width: 100%; max-width: 560px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.hr-ctrl button { min-height: 72px; border: 0; border-radius: 16px; background: rgba(255,255,255,.22); color: inherit; font-size: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+.hr-prep .hr-ctrl button { background: rgba(0,0,0,.1); }
+.hr-ctrl button small { font-size: 12px; font-weight: 600; }
+.hr-note { font-size: 12px; opacity: .85; margin: 8px 0 0; }
+.hr-result { max-width: 420px; }
+.hr-big { font-size: 64px; }
+.hr-result p { font-size: 15px; }
