@@ -7,12 +7,14 @@ const Store = (() => {
     version: VERSION,
     profile: { sex: null, birthYear: null, heightCm: null, activityFactor: 1.5 },
     settings: { daysPerWeek: 4, dbIncrementKg: 2.5, dbMaxKg: 40, restSec: 90, showWarmup: true, goalFatPct: 20, goalVisceral: 9.5, goalMuscleKg: null, goalWeight: null, theme: 'auto', lastBackup: null,
-      proteinPerKg: 1.8, targetBed: '23:30', targetWake: '06:30', sleepGoalH: 7, vegGoal: 5, stepsGoal: 8000, stepperGoalMin: 20, alcoholCheck: false },
+      proteinPerKg: 1.8, aiModel: 'claude-opus-5-5', targetBed: '23:30', targetWake: '06:30', sleepGoalH: 7, vegGoal: 5, stepsGoal: 8000, stepperGoalMin: 20, alcoholCheck: false },
     workouts: [], // 完了したワークアウト
     active: null, // 実施中のワークアウト
     body: [],     // 体組成（段階②）
     habits: {},   // 習慣（段階③）
     deload: { current: null, history: [], snoozeUntil: null }, // 軽めの週
+    meals: {},     // 食事の記録 { 日付: [品目…] }
+    mealFavs: [],  // よく食べるもの
     hiit: { // HIITタイマーの設定（初期値は初心者向け）
       cfg: { presetId: 'p_beginner', work: 20, rest: 40, rounds: 6, sets: 1, setRest: 60, warmupOn: true, warmup: 180, cooldownOn: true, cooldown: 120, moves: [] },
       custom: [], sound: true, voice: true,
@@ -32,6 +34,8 @@ const Store = (() => {
       workouts: Array.isArray(d.workouts) ? d.workouts : [],
       body: Array.isArray(d.body) ? d.body : [],
       habits: d.habits && typeof d.habits === 'object' ? d.habits : {},
+      meals: d.meals && typeof d.meals === 'object' ? d.meals : {},
+      mealFavs: Array.isArray(d.mealFavs) ? d.mealFavs : [],
       hiit: { ...base.hiit, ...(d.hiit || {}), cfg: { ...base.hiit.cfg, ...((d.hiit && d.hiit.cfg) || {}) }, custom: (d.hiit && Array.isArray(d.hiit.custom)) ? d.hiit.custom : [] },
       deload: { ...base.deload, ...(d.deload || {}), history: (d.deload && Array.isArray(d.deload.history)) ? d.deload.history : [] },
       version: VERSION,

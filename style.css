@@ -548,3 +548,37 @@ body.hiit-on .tabbar, body.hiit-on #restbar { display: none !important; }
 .hr-result { max-width: 420px; }
 .hr-big { font-size: 64px; }
 .hr-result p { font-size: 15px; }
+
+/* ===== 食事の記録 ===== */
+.mb-row { display: grid; grid-template-columns: 76px 1fr 96px; gap: 8px; align-items: center; padding: 5px 0; }
+.mb-l { font-size: 13px; font-weight: 600; }
+.mb-track { height: 10px; background: var(--fill); border-radius: 5px; overflow: hidden; }
+.mb-fill { height: 100%; background: var(--accent); border-radius: 5px; }
+.mb-fill.ok { background: var(--good); }
+.mb-fill.over { background: var(--warn); }
+.mb-v { text-align: right; font-variant-numeric: tabular-nums; font-size: 15px; }
+.mb-v small { font-size: 11px; color: var(--muted); }
+.meal-slot { border-top: 1px solid var(--line); padding: 8px 0 4px; }
+.ms-head { display: flex; align-items: center; gap: 8px; }
+.ms-head b { flex: 1; font-size: 15px; }
+.meal-item { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; margin-top: 6px; padding: 4px 6px; border: 0; border-radius: 10px; background: var(--bg); text-align: left; cursor: pointer; }
+.mi-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex: none; background: var(--fill); display: grid; place-items: center; font-size: 20px; }
+.mi-name { flex: 1; min-width: 0; font-size: 14px; }
+.mi-v { text-align: right; font-size: 15px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.mi-v small { font-size: 11px; font-weight: 400; }
+.m-photo { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; }
+.m-photo img { width: 96px; height: 96px; object-fit: cover; border-radius: 12px; }
+.m-edit-photo { display: block; width: 100%; max-height: 40vh; object-fit: contain; border-radius: 10px; margin-bottom: 8px; background: var(--bg); }
+.mc-item { padding: 10px; margin: 8px 0; border-radius: 12px; background: var(--bg); display: flex; flex-direction: column; gap: 6px; }
+.mc-item input:not([type="checkbox"]) { min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); font-size: 16px; padding: 0 10px; width: 100%; }
+.mc-name { flex: 1; font-weight: 600; }
+.mc-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.mc-nums label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+.mc-nums input { text-align: center; font-variant-numeric: tabular-nums; padding: 0 4px !important; }
+.mc-sum { text-align: center; font-size: 15px; margin: 10px 0; }
+.fav-row { display: flex; align-items: center; }
+.fav-row .list-btn { flex: 1; }
+.api-note { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--bg); }
+.api-note ul { padding-left: 18px; margin: 4px 0 8px; }
+.api-note li { margin: 3px 0; }
+.btn[disabled] { opacity: .45; cursor: default; }

@@ -96,7 +96,8 @@ const Home = (() => {
     const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
     const sleepAvg = avg(logged.map((d) => Habits.sleepHours(S().habits[d].bed, S().habits[d].wake)).filter((v) => v != null));
     const vegAvg = avg(logged.map((d) => S().habits[d].veg).filter((v) => v != null));
-    const proteinAvg = avg(logged.map((d) => S().habits[d].protein).filter((v) => v != null));
+    const proteinAvg = avg(days.filter((d) => d <= today).map((d) => Habits.proteinTotal(d)).filter((v) => v != null));
+    const mealAvg = Meals.weekAverages(days.filter((d) => d <= today));
     const stepsAvg = avg(logged.map((d) => S().habits[d].steps).filter((v) => v != null));
 
     // 項目ごとの達成率 → 一番弱いところを来週の課題に
@@ -131,7 +132,7 @@ const Home = (() => {
       if (cb > pb) prs.push({ name: ex.name, text: ex.unit === 'kg' ? `推定1RM ${UI.num(Math.round(pb * 10) / 10)} → ${UI.num(Math.round(cb * 10) / 10)}kg` : `${pb} → ${cb}${Exercises.UNIT_LABEL[ex.unit]}` });
     });
 
-    return { hiitN, from, to, days, ws, sets, scores, achievedDays, sleepAvg, vegAvg, proteinAvg, stepsAvg, weakest, bodyCmp, prs, isCurrent: offset === 0 };
+    return { mealAvg, hiitN, from, to, days, ws, sets, scores, achievedDays, sleepAvg, vegAvg, proteinAvg, stepsAvg, weakest, bodyCmp, prs, isCurrent: offset === 0 };
   }
 
   function comment(w) {
@@ -216,7 +217,8 @@ const Home = (() => {
           <div class="tile"><div class="tile-label">習慣達成</div><div class="tile-val">${w.achievedDays}<small>日</small></div></div>
           <div class="tile"><div class="tile-label">平均睡眠</div><div class="tile-val">${fmt1(w.sleepAvg, '')}<small>時間</small></div></div>
           <div class="tile"><div class="tile-label">平均 野菜</div><div class="tile-val">${fmt1(w.vegAvg, '')}<small>皿</small></div></div>
-          <div class="tile"><div class="tile-label">平均 タンパク質</div><div class="tile-val">${w.proteinAvg == null ? '—' : Math.round(w.proteinAvg)}<small>g</small></div></div>
+          <div class="tile"><div class="tile-label">平均 カロリー</div><div class="tile-val">${w.mealAvg.kcal == null ? '—' : Math.round(w.mealAvg.kcal).toLocaleString()}<small>kcal</small></div>${w.mealAvg.days ? `<div class="muted small">記録${w.mealAvg.days}日分</div>` : ''}</div>
+          <div class="tile"><div class="tile-label">平均 タンパク質</div><div class="tile-val">${w.proteinAvg == null ? '—' : Math.round(w.proteinAvg)}<small>g</small></div>${(() => { const t = Habits.targets(); return t.ok ? `<div class="muted small">目安 ${t.protein}g</div>` : ''; })()}</div>
           <div class="tile"><div class="tile-label">平均 歩数</div><div class="tile-val">${w.stepsAvg == null ? '—' : Math.round(w.stepsAvg).toLocaleString()}</div></div>
         </div>
 

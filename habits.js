@@ -59,6 +59,9 @@ const Habits = (() => {
   const stepperFromWorkouts = (d) => hiitMin(d) + S().workouts.filter((w) => w.date === d && !w.hiit)
     .reduce((a, w) => a + w.items.filter((it) => it.exId === 'stepper').reduce((b, it) => b + it.sets.reduce((c, s) => c + s.reps, 0), 0), 0);
 
+  // その日のタンパク質：食事記録の合計 ＋ 習慣チェックで手で足した分
+  const proteinTotal = (d) => { const h = day(d); const meal = Meals.proteinOf(d); return h.protein == null && !meal ? null : meal + (h.protein || 0); };
+
   // ================= チェック項目の判定 =================
   // ok: true=達成 / false=未達 / null=未入力
   function evaluate(d) {
@@ -75,7 +78,7 @@ const Habits = (() => {
       },
       { k: 'meal', label: `${mealDeadline()}までに食べ終える`, ok: h.lastMeal ? nightMin(h.lastMeal) <= nightMin(mealDeadline()) : null, detail: h.lastMeal ? `最後は${h.lastMeal}` : '' },
       { k: 'veg', label: `野菜 ${s.vegGoal}皿`, ok: h.veg == null ? null : h.veg >= s.vegGoal, detail: h.veg != null ? `${h.veg}皿` : '' },
-      { k: 'protein', label: t.ok ? `タンパク質 ${t.protein}g` : 'タンパク質', ok: h.protein == null || !t.ok ? null : h.protein >= t.protein * 0.9, detail: h.protein != null ? `${h.protein}g` : '' },
+      (() => { const pt = proteinTotal(d); return { k: 'protein', label: t.ok ? `タンパク質 ${t.protein}g` : 'タンパク質', ok: pt == null || !t.ok ? null : pt >= t.protein * 0.9, detail: pt != null ? `${pt}g` : '' }; })(),
       {
         k: 'move', label: `${s.stepsGoal.toLocaleString()}歩 or ステッパー・HIIT ${s.stepperGoalMin}分`, detail: [h.steps != null ? `${h.steps.toLocaleString()}歩` : '', stepperMin ? `ステッパー・HIIT ${stepperMin}分` : ''].filter(Boolean).join(' / '),
         ok: h.steps == null && !stepperMin ? null : (h.steps || 0) >= s.stepsGoal || stepperMin >= s.stepperGoalMin,
@@ -126,7 +129,7 @@ const Habits = (() => {
         <p class="hint">${sc.achieved ? '達成です。連続記録が伸びます。' : `${sc.need}項目以上で「達成」になります（完璧でなくてOK）。`}</p>
       </div>
 
-      ${targetsHtml(date)}
+      ${Meals.cardHtml(date)}
 
       <div class="card hb">
         ${head('sleep', '😴 睡眠')}
@@ -155,13 +158,14 @@ const Habits = (() => {
 
       <div class="card hb">
         ${head('protein', '🍳 タンパク質')}
+        ${Meals.proteinOf(date) ? `<p class="small">食事の記録から <b>${Meals.proteinOf(date)}g</b>（自動）＋ 下で足した分 ${h.protein || 0}g</p>` : ''}
         <div class="counter">
           <button class="btn step" data-act="inc" data-f="protein" data-d="-5" aria-label="5g減らす">−5</button>
           <span class="counter-val">${h.protein ?? 0}<small>g</small></span>
           <button class="btn step" data-act="inc" data-f="protein" data-d="5" aria-label="5g増やす">＋5</button>
         </div>
         <div class="chips">${PROTEIN_FOODS.map(([n, g]) => `<button class="chip" data-act="inc" data-f="protein" data-d="${g}">${n} <small class="muted">+${g}</small></button>`).join('')}</div>
-        <p class="hint">食べたものをタップすると足されます（量は目安）。毎食「手のひら1枚分」の肉・魚・卵・大豆製品で約20〜25gです。</p>
+        <p class="hint">食べたものをタップすると足されます（量は目安）。上の「食事の記録」に入れた分は自動で入るので、記録していない分だけ足してください。毎食「手のひら1枚分」の肉・魚・卵・大豆製品で約20〜25gです。</p>
       </div>
 
       <div class="card hb">
@@ -185,34 +189,7 @@ const Habits = (() => {
       ${blueprintHtml()}`;
     el.onclick = onClick;
     el.onchange = onChange;
-  }
-
-  function targetsHtml(d) {
-    const t = targets();
-    if (!t.ok) return `<div class="card"><h3>食事の目安</h3><p class="muted small">${esc(t.reason)}</p></div>`;
-    const trained = trainedOn(d);
-    const kcal = trained ? t.train : t.rest;
-    const p = t.protein;
-    const fat = Math.round((kcal * 0.25) / 9);
-    const carb = Math.max(0, Math.round((kcal - p * 4 - fat * 9) / 4));
-    return `<div class="card">
-      <div class="row between"><h3>食事の目安</h3><span class="tag">${trained ? '筋トレの日' : '休みの日'}</span></div>
-      <div class="tiles">
-        <div class="tile"><div class="tile-label">カロリー</div><div class="tile-val">${kcal.toLocaleString()}<small>kcal</small></div></div>
-        <div class="tile"><div class="tile-label">タンパク質</div><div class="tile-val">${p}<small>g</small></div></div>
-        <div class="tile"><div class="tile-label">脂質 / 炭水化物</div><div class="tile-val small-val">${fat}<small>g</small> / ${carb}<small>g</small></div></div>
-      </div>
-      <details class="calc">
-        <summary class="muted small">計算の根拠</summary>
-        <ul class="small">
-          <li>体重 ${t.weight}kg × ${st().proteinPerKg}g ＝ タンパク質 ${p}g</li>
-          <li>基礎代謝 ${t.bmr}kcal（${esc(t.bmrSrc)}）× 活動係数 ${t.af} ＝ 消費 約${t.tdee.toLocaleString()}kcal</li>
-          <li>筋トレの日は消費とほぼ同じ（${t.train.toLocaleString()}kcal）、休みの日は約15%少なめ（${t.rest.toLocaleString()}kcal）。週全体でゆるやかに脂肪を落とし、筋肉を増やす配分です。</li>
-          <li>基礎代謝を大きく下回る極端な制限はしません。</li>
-          <li>脂質はカロリーの25%、残りを炭水化物にしています。</li>
-        </ul>
-      </details>
-    </div>`;
+    Meals.fillThumbs(el);
   }
 
   function blueprintHtml() {
@@ -236,6 +213,8 @@ const Habits = (() => {
 
   // ================= 操作 =================
   function onClick(e) {
+    const mb = e.target.closest('[data-m]');
+    if (mb) { Meals.onClick(mb, date, () => render(root)); return; }
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const h = day();
@@ -273,5 +252,5 @@ const Habits = (() => {
   // 日付を指定して開く（ダッシュボードから使う）
   function openDate(d) { date = d; }
 
-  return { render, title: '食事・習慣', evaluate, score, targets, trainedOn, sleepHours, openDate };
+  return { proteinTotal, render, title: '食事・習慣', evaluate, score, targets, trainedOn, sleepHours, openDate };
 })();

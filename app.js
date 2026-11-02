@@ -46,6 +46,31 @@ const Settings = {
         <p class="hint">食べ終える時刻の目標は「就寝の3時間前」で自動的に決まります。</p>
       </div>
       <div class="card">
+        <h3>写真からの自動推定（Claude API・任意）</h3>
+        <p class="small">APIキーを入れると、食事の写真を撮るだけでカロリーとPFCを自動で推定できます。入れなくても、Claudeアプリを使う方法（無料）で記録できます。</p>
+        <label class="bf"><span>APIキー ${Meals.getKey() ? '<em class="flag unsure">設定済み</em>' : ''}</span>
+          <input type="password" id="api-key" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${Meals.getKey() ? '•••••••• ' + Meals.getKey().slice(-4) : 'sk-ant-…'}"></label>
+        <div class="row gap mt">
+          <button class="btn small" data-act="keysave">キーを保存</button>
+          ${Meals.getKey() ? '<button class="btn small ghost danger" data-act="keydel">キーを削除</button>' : ''}
+        </div>
+        <label class="field mt"><span>使うモデル</span>
+          <select data-k="aiModel" data-type="str">${Meals.MODELS.map((m) => opt(m.id, st.aiModel, m.label)).join('')}</select></label>
+        <div class="api-note small">
+          <b>料金について</b>
+          <ul>
+            <li>使った分だけ、Claudeの利用料がAPIキーの持ち主（あなた）にかかります。写真は送る前に縮小するので、Opus 5.5で<b>1枚あたり約2〜5円</b>が目安です（Sonnet 5.5は約半分、Haiku 5.5は1円未満）。推定のたびに、確認画面に実際の金額を表示します。</li>
+            <li>使いすぎを防ぐため、Claude Consoleの「Limits」で月の利用上限を低めに設定しておくのがおすすめです。</li>
+          </ul>
+          <b>キーの扱いについて</b>
+          <ul>
+            <li>キーはこのiPhoneのブラウザの中（localStorage）にだけ保存します。アプリのコードやGitHubには含まれず、バックアップのJSONにも入りません。</li>
+            <li>キーは、写真を送るときに Anthropic（api.anthropic.com）へ直接送られるだけで、ほかのサイトには送りません。</li>
+            <li>他人に使われないよう、<b>このアプリ専用のキー</b>を作り、iPhoneを他人に貸すときや機種変更のときは「キーを削除」してください。キーが漏れた心配があれば、Claude Consoleですぐ無効にできます。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
         <h3>トレーニング</h3>
         <label class="field"><span>週のトレーニング回数</span>
           <select data-k="daysPerWeek">${opt(4, st.daysPerWeek, '週4回（上半身/下半身）')}${opt(3, st.daysPerWeek, '週3回（全身A/B）')}</select></label>
@@ -86,7 +111,7 @@ const Settings = {
       </div>
       <div class="card">
         <h3>データの削除</h3>
-        <button class="btn block ghost danger" data-act="reset">すべてのデータを削除（写真も含む）</button>
+        <button class="btn block ghost danger" data-act="reset">すべてのデータを削除（写真・APIキーも含む）</button>
       </div>
       <p class="muted small center">Recomp v1.0</p>`;
     el.onchange = (e) => {
@@ -127,8 +152,15 @@ const Settings = {
         Store.exportJSON(withPh && withPh.checked ? photoCache : null);
         setTimeout(() => App.render(), 300);
       }
-      if (b.dataset.act === 'reset' && confirm('すべての記録と写真を削除します。元に戻せません。よろしいですか？') && confirm('本当に削除しますか？')) {
-        Store.reset(); Photos.clear().catch(() => {}); App.applyTheme(); App.render(); UI.toast('削除しました');
+      if (b.dataset.act === 'keysave') {
+        const v = el.querySelector('#api-key').value.trim();
+        if (!v) { UI.toast('キーを入力してください'); return; }
+        if (!/^sk-ant-/.test(v) && !confirm('「sk-ant-」で始まらないキーです。このまま保存しますか？')) return;
+        Meals.setKey(v); UI.toast('APIキーを保存しました（この端末の中だけ）'); App.render();
+      }
+      if (b.dataset.act === 'keydel' && confirm('APIキーをこの端末から削除しますか？')) { Meals.setKey(''); UI.toast('削除しました'); App.render(); }
+      if (b.dataset.act === 'reset' && confirm('すべての記録・写真・APIキーを削除します。元に戻せません。よろしいですか？') && confirm('本当に削除しますか？')) {
+        Store.reset(); Photos.clear().catch(() => {}); Meals.clearThumbs().catch(() => {}); Meals.setKey(''); App.applyTheme(); App.render(); UI.toast('削除しました');
       }
     };
     // 写真があれば「写真も含める」を出す。チェックしたら先に写真を読み込んでおく
